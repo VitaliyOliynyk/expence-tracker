@@ -1,0 +1,9 @@
+// eslint-config-next 16 eksportuje gotowe konfiguracje flat.
+import coreWebVitals from "eslint-config-next/core-web-vitals";
+import typescript from "eslint-config-next/typescript";
+
+export default [
+  { ignores: [".next/**", "node_modules/**", "next-env.d.ts"] },
+  ...coreWebVitals,
+  ...typescript,
+];

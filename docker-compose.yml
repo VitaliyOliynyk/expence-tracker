@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: expence-tracker-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: expence
+      POSTGRES_PASSWORD: expence
+      POSTGRES_DB: expence_tracker
+    ports:
+      # Zmiana portu hosta: ustaw POSTGRES_PORT w .env (np. gdy 5432 jest zajety).
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U expence -d expence_tracker"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:

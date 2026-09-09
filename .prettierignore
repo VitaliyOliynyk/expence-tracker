@@ -1,0 +1,5 @@
+node_modules
+.next
+dist
+packages/db/src/generated
+pnpm-lock.yaml

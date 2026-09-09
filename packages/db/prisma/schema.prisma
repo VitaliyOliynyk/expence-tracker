@@ -1,0 +1,134 @@
+// Schemat bazy dla modulu sledzenia wydatkow.
+// URL bazy jest w prisma.config.ts (Prisma 7), nie w tym pliku.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Auth.js (@auth/prisma-adapter) - ksztalt narzucony przez adapter.
+// Nie zmieniaj nazw pol Account/Session, adapter mapuje je 1:1.
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String    @id @default(uuid(7))
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  // Uzywane przez provider Credentials; puste dla kont OAuth.
+  passwordHash  String?
+  createdAt     DateTime  @default(now())
+
+  accounts   Account[]
+  sessions   Session[]
+  categories Category[]
+  expenses   Expense[]
+  budgets    Budget[]
+}
+
+model Account {
+  id                String  @id @default(uuid(7))
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(uuid(7))
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ---------------------------------------------------------------------------
+// Domena: wydatki
+// ---------------------------------------------------------------------------
+
+enum BudgetPeriod {
+  WEEKLY
+  MONTHLY
+}
+
+model Category {
+  id        String   @id @default(uuid(7))
+  userId    String
+  name      String
+  color     String   @default("#64748b")
+  icon      String?
+  createdAt DateTime @default(now())
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expenses Expense[]
+  budgets  Budget[]
+
+  // Nazwa kategorii jest unikalna w obrebie jednego uzytkownika, nie globalnie.
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model Expense {
+  id          String   @id @default(uuid(7))
+  userId      String
+  categoryId  String?
+  // Kwota w groszach (Int), nigdy Float - patrz packages/types/src/money.ts.
+  amountCents Int
+  currency    String   @default("PLN")
+  description String?
+  spentAt     DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  // Pod listing z filtrem po dacie i pod agregacje per kategoria.
+  @@index([userId, spentAt])
+  @@index([userId, categoryId])
+}
+
+model Budget {
+  id          String       @id @default(uuid(7))
+  userId      String
+  categoryId  String?
+  amountCents Int
+  period      BudgetPeriod @default(MONTHLY)
+  startsAt    DateTime
+  createdAt   DateTime     @default(now())
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, categoryId, period, startsAt])
+  @@index([userId])
+}

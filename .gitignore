@@ -1,0 +1,28 @@
+# zaleznosci
+node_modules/
+.pnpm-store/
+
+# build
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+
+# Prisma - klient generowany do repo NIE trafia
+packages/db/src/generated/
+
+# srodowisko
+.env
+.env.*
+!.env.example
+
+# narzedzia
+.DS_Store
+*.log
+npm-debug.log*
+pnpm-debug.log*
+.idea/
+.vscode/*
+!.vscode/extensions.json
+coverage/
