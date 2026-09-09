@@ -1,7 +1,6 @@
 {
   "extends": "@expence/config/tsconfig.next.json",
   "compilerOptions": {
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     }

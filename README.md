@@ -97,9 +97,16 @@ curl -i localhost:3001/api/expenses     # 401 - brak tokenu, tak ma byc
 
 ## Wersje zaleznosci
 
-Sprawdzone w rejestrze npm 2026-09-10. Dwie uwagi:
+Zainstalowane i zweryfikowane 2026-09-10 (`pnpm install`, `lint`, `typecheck`
+przechodza). Cztery pozycje sa **celowo nizsze niz tag `latest`** - podbicie
+ktorejkolwiek psuje build:
 
-- Tag `latest` Prismy wskazuje na `8.0.0-rc` - swiadomie pinujemy stabilne `^7.10.0`.
-- `next-auth` v5 jest nadal w becie (`5.0.0-beta.32`), stad wersja dokladna, bez `^`.
-- `@auth/prisma-adapter` deklaruje peer `@prisma/client` do wersji 6 - przy
-  instalacji pojawi sie ostrzezenie o peer dependency. Adapter dziala z 7.x.
+- **TypeScript `^6.0.3`**, nie 7.x. `typescript-eslint` 8.70 odmawia startu na
+  TS 7.0 (`typescript-eslint does not support TS 7.0`), wiec `pnpm lint` padal.
+- **ESLint `^9.39.5`**, nie 10.x. `eslint-plugin-react` 7.37.5 wola usuniete w
+  ESLint 10 `context.getFilename()` i wywraca sie na `react/display-name`.
+- **Prisma `^7.10.0`** - tag `latest` wskazuje na `8.0.0-rc`.
+- **`next-auth` `5.0.0-beta.32`** - v5 wciaz w becie, wersja dokladna bez `^`.
+
+Jedyne ostrzezenie przy instalacji dotyczy `eslint-plugin-import`, ktory
+deklaruje peer ESLint do 9.x - to falszywy alarm, plugin dziala.

@@ -4,11 +4,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Stan repozytorium
 
-Szkielet. Struktura, konfiguracja i kontrakty typów są kompletne, ale **`node_modules` nie istnieje, klient Prismy nie jest wygenerowany i nie ma żadnej migracji**. Zanim cokolwiek uruchomisz, przejdź sekcję „Bootstrap".
+Szkielet z działającym toolingiem. Zależności są zainstalowane, `.env`
+utworzony, klient Prismy wygenerowany, Postgres wstaje w kontenerze,
+`pnpm lint` i `pnpm typecheck` przechodzą na zero błędów.
 
-Nie ma jeszcze runnera testów (ani Vitest, ani Playwright) — jeśli dodajesz testy, najpierw skonfiguruj narzędzie.
+**Czego jeszcze nie ma:** żadnej migracji (schemat nie istnieje w bazie),
+danych z seeda, runnera testów (ani Vitest, ani Playwright) i UI ponad
+placeholdery. Logika backendu (`/api/expenses`, `/api/categories`,
+`/api/summary`) jest napisana, ale nie została uruchomiona przeciw bazie.
 
 ## Bootstrap
+
+Na czystym klonie:
 
 ```bash
 cp .env.example .env
@@ -88,8 +95,9 @@ Stos jest świeży i kilka rzeczy działa inaczej, niż podpowiada pamięć o st
 - Generator `prisma-client` nie ładuje `.env` sam. Skrypty CLI (seed, migracje) muszą zaimportować `packages/db/src/load-env.ts` **przed** `src/index.ts`; aplikacje dostają env z `next.config.ts`.
 - **Jeden wspólny `.env` leży w korzeniu monorepo**, a Next szuka go tylko w katalogu aplikacji — dlatego oba `next.config.ts` dociągają go przez `dotenv`. Dodając trzecią aplikację, powtórz ten zabieg.
 - **Tailwind v4 nie ma `tailwind.config.js`** — motyw i tokeny shadcn/ui są w `apps/frontend/src/app/globals.css`. `components.json` celowo ma pusty `tailwind.config`.
-- `next-auth` jest w becie (`5.0.0-beta.32`), wersja przypięta dokładnie, bez `^`. `@auth/prisma-adapter` deklaruje peer `@prisma/client` do 6.x — ostrzeżenie przy instalacji jest oczekiwane, adapter działa z 7.x.
-- Tag `latest` Prismy wskazuje na `8.0.0-rc`. Trzymamy stabilne `^7.10.0` — nie podbijaj przez `prisma@latest`.
+- `next-auth` jest w becie (`5.0.0-beta.32`), wersja przypięta dokładnie, bez `^`.
+- **Cztery zależności są celowo niższe niż tag `latest` — nie podbijaj ich bez sprawdzenia.** TypeScript stoi na `^6.0.3`, bo `typescript-eslint` 8.70 odmawia startu na TS 7.0. ESLint stoi na `^9.39.5`, bo `eslint-plugin-react` 7.37.5 woła usunięte w ESLint 10 `context.getFilename()`. Prisma stoi na `^7.10.0`, bo `latest` to `8.0.0-rc`. `next-auth` — jak wyżej.
+- TS 6 deprecjonuje `baseUrl` (błąd TS5101). `paths` w obu `tsconfig.json` liczą się względem pliku tsconfig, bez `baseUrl` — nie dodawaj go z powrotem.
 
 ## Konwencje
 

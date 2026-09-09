@@ -1,6 +1,8 @@
 // Tailwind v4 nie ma juz tailwind.config.js - konfiguracja siedzi w globals.css.
-export default {
+const config = {
   plugins: {
     "@tailwindcss/postcss": {},
   },
 };
+
+export default config;

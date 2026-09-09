@@ -31,6 +31,16 @@ export function fail(
   return Response.json(body, { status: STATUS_BY_CODE[code] });
 }
 
+/**
+ * `flatten().fieldErrors` z Zoda ma wartosci opcjonalne (`string[] | undefined`),
+ * a kontrakt apiErrorSchema wymaga tablic - odsiewamy puste wpisy.
+ */
+function toFieldErrors(raw: Record<string, string[] | undefined>): Record<string, string[]> {
+  return Object.fromEntries(
+    Object.entries(raw).filter((entry): entry is [string, string[]] => entry[1] !== undefined),
+  );
+}
+
 /** Walidacja body JSON. Zwraca dane albo gotowa odpowiedz 400 z mapa bledow pol. */
 export async function parseJsonBody<T>(
   request: Request,
@@ -47,7 +57,7 @@ export async function parseJsonBody<T>(
   if (!result.success) {
     const flattened = result.error.flatten();
     return {
-      error: fail("BAD_REQUEST", "Nieprawidlowe dane wejsciowe", flattened.fieldErrors),
+      error: fail("BAD_REQUEST", "Nieprawidlowe dane wejsciowe", toFieldErrors(flattened.fieldErrors)),
     };
   }
   return { data: result.data };
@@ -62,7 +72,11 @@ export function parseQuery<T>(
   const result = schema.safeParse(params);
   if (!result.success) {
     return {
-      error: fail("BAD_REQUEST", "Nieprawidlowe parametry zapytania", result.error.flatten().fieldErrors),
+      error: fail(
+        "BAD_REQUEST",
+        "Nieprawidlowe parametry zapytania",
+        toFieldErrors(result.error.flatten().fieldErrors),
+      ),
     };
   }
   return { data: result.data };

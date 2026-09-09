@@ -12,7 +12,6 @@ const nextConfig: NextConfig = {
   transpilePackages: ["@expence/db", "@expence/types"],
   // Klient Prismy nie moze byc bundlowany - trzyma natywne silniki zapytan.
   serverExternalPackages: ["@prisma/client", "@prisma/adapter-pg"],
-  eslint: { ignoreDuringBuilds: false },
 };
 
 export default nextConfig;
