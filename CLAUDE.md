@@ -65,6 +65,42 @@ TOKEN=$(curl -s -X POST localhost:3001/api/auth/login -H 'Content-Type: applicat
 curl localhost:3001/api/auth/me -H "Authorization: Bearer $TOKEN"
 ```
 
+## Praca z branchami (GitHub flow)
+
+Repo pracuje wg [GitHub flow](https://docs.github.com/en/get-started/using-github/github-flow).
+Gałąź główna to **`master`** (nie `main`) i jest zawsze w stanie działającym.
+
+- **Nie commituj bezpośrednio do `master`.** Każda zmiana — feature, poprawka,
+  dokumentacja — powstaje na osobnym branchu odbitym od aktualnego `master`
+  (`git switch master && git switch -c feature/<nazwa>`).
+- **Nazwy branchy:** `<typ>/<opis>`, opis w kebab-case po angielsku, krótko.
+  Typy: `feature/` (nowa funkcjonalność, np. `feature/main-page`), `fix/`
+  (poprawka błędu), `refactor/` (zmiana struktury bez zmiany zachowania, np.
+  migracja `categories`/`expenses` na FSD), `docs/` (tylko dokumentacja),
+  `chore/` (zależności, skrypty, konfiguracja).
+- **Jeden branch = jedna intencja.** Nie dorzucaj niezwiązanych zmian "przy
+  okazji" — zauważony problem poza zakresem to osobny branch.
+- **Branch krótkożyciowy.** Przed mergem zaktualizuj go względem `master`
+  przez `git rebase master` (branche są lokalne i niewspółdzielone, więc
+  przepisanie historii jest bezpieczne).
+- **Commity** małe i spójne, opis po polsku (jak w dotychczasowej historii).
+- **Warunki mergu** — na branchu, po rebase:
+  - `pnpm lint` i `pnpm typecheck` przechodzą na zero błędów, `pnpm build` się
+    buduje;
+  - zmiana `schema.prisma` ma w tym samym branchu migrację
+    (`pnpm db:migrate`), a seed nadal działa;
+  - jeśli feature zmienia to, co opisuje CLAUDE.md (np. "Stan repozytorium",
+    "Czego jeszcze nie ma"), aktualizacja dokumentacji jest częścią brancha.
+- **Merge:** repo nie ma jeszcze remote'a ani `gh`, więc pull request
+  zastępuje lokalny `git switch master && git merge --no-ff <branch>` —
+  `--no-ff` zostawia w historii commit mergu, czyli widoczną granicę
+  feature'a. Po podpięciu remote'a na GitHubie: `git push -u origin <branch>`,
+  PR do `master`, merge po review; nigdy force-push na `master`.
+- **Po mergu** usuń branch: `git branch -d <branch>`.
+- **Dla Claude:** przed rozpoczęciem zadania sprawdź `git branch --show-current`;
+  jeśli to `master`, najpierw utwórz branch wg reguł wyżej. Commit, merge i
+  push tylko na wyraźną prośbę użytkownika.
+
 ## Architektura
 
 Dwie **osobne** aplikacje Next.js w jednym monorepo pnpm. `apps/frontend` to całe UI plus sesja; `apps/backend` to wyłącznie route handlery `/api/*` — nie ma tam żadnej strony ani root layoutu i nie powinno przybyć.
