@@ -1,6 +1,6 @@
 import "server-only";
-import { authResponseSchema, loginSchema, registerSchema } from "@expence/types";
-import type { AuthResponse, LoginInput, RegisterInput } from "@expence/types";
+import { apiErrorSchema, authResponseSchema, loginSchema, registerSchema } from "@expence/types";
+import type { ApiError, AuthResponse, LoginInput, RegisterInput } from "@expence/types";
 
 // Wolane wylacznie z serwera (Server Actions, authorize()) - bez Bearera,
 // bo tu jeszcze nie ma tokenu do wyslania. API_URL to adres widziany z
@@ -12,6 +12,8 @@ export class AuthApiError extends Error {
   constructor(
     readonly status: number,
     message: string,
+    readonly code?: ApiError["error"]["code"],
+    readonly fields?: ApiError["error"]["fields"],
   ) {
     super(message);
     this.name = "AuthApiError";
@@ -30,11 +32,14 @@ async function callAuthEndpoint(path: string, body: unknown): Promise<AuthRespon
   const data: unknown = await response.json().catch(() => null);
 
   if (!response.ok) {
-    const message =
-      data && typeof data === "object" && "error" in data
-        ? String((data as { error: { message?: string } }).error?.message ?? "Blad autoryzacji")
-        : "Blad autoryzacji";
-    throw new AuthApiError(response.status, message);
+    const parsed = apiErrorSchema.safeParse(data);
+    const error = parsed.success ? parsed.data.error : undefined;
+    throw new AuthApiError(
+      response.status,
+      error?.message ?? "Blad autoryzacji",
+      error?.code,
+      error?.fields,
+    );
   }
 
   return authResponseSchema.parse(data);

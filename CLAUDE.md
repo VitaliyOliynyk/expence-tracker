@@ -12,9 +12,15 @@ i tworzy `dev@expence.local` z realnym hasłem (`dev12345`). Logika backendu
 uruchomiona przeciw bazie i zweryfikowana end-to-end (rejestracja, logowanie,
 izolacja danych między użytkownikami).
 
+`/sign-in` i `/sign-up` są zaimplementowane (react-hook-form + shadcn/ui,
+Server Actions wołające `signIn`/`registerRequest`) i zweryfikowane w
+przeglądarce end-to-end: rejestracja, walidacja klienta, logowanie,
+błędne hasło, wylogowanie. Zobacz "Frontend: Feature-Sliced Design" niżej.
+
 **Czego jeszcze nie ma:** runnera testów (ani Vitest, ani Playwright) i UI
-ponad placeholdery (`/sign-in`, `/sign-up` to gołe formularze bez
-react-hook-form/shadcn).
+ponad `/sign-in`/`/sign-up` — listy i formularze wydatków/kategorii
+(`(dashboard)/*`) to wciąż gołe elementy HTML bez shadcn/ui, w starym
+płaskim układzie `components/`+`hooks/`+`lib/`.
 
 ## Bootstrap
 
@@ -136,6 +142,47 @@ plików — `auth.service.ts` nie widzi `user.repository.ts` ani Prismy.
   wystawia swój `*.messages.ts` — reszta backendu z niego korzysta tylko
   przez `dispatch(JakasQuery({ ... }))`.
 
+### Frontend: Feature-Sliced Design (FSD)
+
+Nowy kod frontendu — od modułu logowania/rejestracji wzwyż — powstaje wg
+[Feature-Sliced Design](https://feature-sliced.design/) zamiast dawnego
+płaskiego układu `components/`+`hooks/`+`lib/`. To migracja **częściowa i
+celowa**: `categories`/`expenses` (komponenty w `components/`, hooki w
+`hooks/`) zostają w starym układzie do osobnej migracji — nie przenoś ich
+przy okazji innej zmiany.
+
+Warstwy w `apps/frontend/src/`:
+
+- **`app/**/page.tsx`, `layout.tsx`** — trasy Next.js, w duchu FSD pełnią
+  rolę warstwy `pages`: tylko kompozycja (auth guard przez `auth()`,
+  złożenie widgetu i feature'a), zero logiki biznesowej. Next wymusza tu
+  fizyczną lokalizację (routing), więc to jedyna warstwa, której nie da
+  się przenieść pod osobny katalog.
+- **`widgets/`** — złożenia używane przez więcej niż jedną stronę, np.
+  `widgets/auth-card` (ramka `Card` + nagłówek + link zamienny współdzielony
+  przez `/sign-in` i `/sign-up`).
+- **`features/<domena>/<akcja>/`** — jedna intencja użytkownika, np.
+  `features/auth/login`, `features/auth/register`. Segmenty w środku:
+  `ui/` (komponent kliencki z react-hook-form) i `api/` (Server Action,
+  `"use server"`). Publiczne API slice'a to wyłącznie `index.ts` w jego
+  korzeniu — import spoza slice'a idzie przez `@/features/auth/login`,
+  nigdy przez `@/features/auth/login/ui/login-form` bezpośrednio. To ten
+  sam pomysł co `*.messages.ts` w modułach backendu (patrz wyżej): jeden
+  plik jest granicą, reszta jest szczegółem implementacyjnym.
+- **`shared`** na razie **nie jest osobnym katalogiem** — tę rolę pełnią
+  już istniejące `components/ui` (prymitywy shadcn/ui spięte przez
+  `components.json`) i `lib/*` (m.in. `cn`, `auth-api.ts`, `api-client.ts`,
+  `query-keys.ts`). Nie duplikuj ich pod nowym `shared/`, dopóki nie
+  ruszy pełna migracja reszty aplikacji.
+- Brak osobnej warstwy `entities` dla auth: sesja/`UserDto` to już
+  współdzielony kontrakt z `@expence/types`, a jej infrastruktura
+  (`next-auth`) siedzi w `apps/frontend/src/auth.ts` — dokładanie
+  `entities/user` tylko po to, by zaznaczyć checkbox FSD, byłoby pustą
+  abstrakcją.
+
+Gdy `categories`/`expenses` przejdą na FSD, dostają własne katalogi w
+`entities/`/`features/` analogicznie do `features/auth/*`.
+
 ### `packages/types` to kontrakt, nie zbiór interfejsów
 
 Schematy Zod są jedynym źródłem prawdy o kształcie danych i regułach walidacji. Ten sam schemat działa w trzech miejscach: `parseJsonBody`/`parseQuery` w backendzie, `standardSchemaResolver` w formularzach react-hook-form i typowanie odpowiedzi w `api-client.ts`. Zmiana reguły walidacji **zawsze** zaczyna się tutaj — dopisanie jej osobno w handlerze albo w formularzu tworzy drugą, rozjeżdżającą się definicję.
@@ -159,6 +206,7 @@ Stos jest świeży i kilka rzeczy działa inaczej, niż podpowiada pamięć o st
 - **Cztery zależności są celowo niższe niż tag `latest` — nie podbijaj ich bez sprawdzenia.** TypeScript stoi na `^6.0.3`, bo `typescript-eslint` 8.70 odmawia startu na TS 7.0. ESLint stoi na `^9.39.5`, bo `eslint-plugin-react` 7.37.5 woła usunięte w ESLint 10 `context.getFilename()`. Prisma stoi na `^7.10.0`, bo `latest` to `8.0.0-rc`. `next-auth` — jak wyżej.
 - TS 6 deprecjonuje `baseUrl` (błąd TS5101). `paths` w obu `tsconfig.json` liczą się względem pliku tsconfig, bez `baseUrl` — nie dodawaj go z powrotem.
 - **Turbopack (Next 16) nie rozwiązuje relatywnych importów `./plik.js` wskazujących na `./plik.ts`** wewnątrz pakietów z `transpilePackages` — "Module not found: Can't resolve './plik.js'", zarówno w zwykłych route'ach jak i w `proxy.ts`. `tsx` (seed, migracje) toleruje oba warianty. Dlatego `packages/types` i `packages/db` mają te importy **bez** rozszerzenia — zobacz "Konwencje" niżej.
+- **`pnpm dlx shadcn@latest add ...` generuje dziś import `cn` z pakietu npm `cn`**, nie z `@/lib/utils`, mimo że `components.json` ma `"utils": "@/lib/utils"` — ten alias CLI ignoruje dla samego helpera `cn`. Repo ma już `cn` w `lib/utils.ts` (przez `clsx`+`tailwind-merge`, oba i tak zależnościami). Po każdym `shadcn add` podmień `from "cn"` na `from "@/lib/utils"` w nowych plikach `components/ui/*` i usuń pakiet `cn` z `package.json` — inaczej powstają dwie równoległe implementacje tej samej funkcji. `class-variance-authority` CLI też potrafi wpisać do importu bez dodania do `package.json` — sprawdź `pnpm typecheck` po każdym dodaniu komponentu.
 
 ## Konwencje
 
