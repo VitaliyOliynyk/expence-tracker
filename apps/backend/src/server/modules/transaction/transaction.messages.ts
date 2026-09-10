@@ -5,6 +5,7 @@ import type {
   SummaryQuery,
   TransactionDto,
   TransactionListQuery,
+  TransactionListResponse,
   UpdateTransactionInput,
 } from "@expence/types";
 
@@ -32,7 +33,7 @@ export const DeleteTransactionCommand = defineCommand<{ userId: string; id: stri
 
 export const ListTransactionsQuery = defineQuery<
   { userId: string; query: TransactionListQuery },
-  TransactionDto[]
+  TransactionListResponse
 >("transaction.list");
 
 export const GetTransactionQuery = defineQuery<{ userId: string; id: string }, TransactionDto | null>(
