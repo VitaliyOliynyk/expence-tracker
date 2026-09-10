@@ -1,15 +1,8 @@
-import type { ExpenseListQuery } from "@expence/types";
-
 /**
  * Jedno miejsce z kluczami cache'a TanStack Query.
- * Dzieki hierarchii `["expenses"]` inwaliduje wszystkie listy naraz.
+ * Dzieki hierarchii `["summary"]` inwaliduje wszystkie warianty podsumowania naraz.
  */
 export const queryKeys = {
-  expenses: {
-    all: ["expenses"] as const,
-    list: (query: Partial<ExpenseListQuery>) => ["expenses", "list", query] as const,
-    detail: (id: string) => ["expenses", "detail", id] as const,
-  },
   categories: {
     all: ["categories"] as const,
   },

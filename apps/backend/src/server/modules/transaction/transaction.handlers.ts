@@ -5,6 +5,7 @@ import {
   DeleteTransactionCommand,
   ListTransactionsQuery,
   GetTransactionQuery,
+  GetTransactionSummaryQuery,
 } from "./transaction.messages";
 import {
   createTransaction,
@@ -12,6 +13,7 @@ import {
   deleteTransaction,
   listTransactions,
   getTransaction,
+  getSummary,
 } from "./transaction.service";
 
 /** Cienki adapter: wiaze wiadomosci szyny z serwisem modulu transakcji. */
@@ -25,4 +27,5 @@ export function registerTransactionHandlers(bus: Bus): void {
   bus.register(DeleteTransactionCommand, (payload) => deleteTransaction(payload.userId, payload.id));
   bus.register(ListTransactionsQuery, (payload) => listTransactions(payload.userId, payload.query));
   bus.register(GetTransactionQuery, (payload) => getTransaction(payload.userId, payload.id));
+  bus.register(GetTransactionSummaryQuery, (payload) => getSummary(payload.userId, payload.query));
 }

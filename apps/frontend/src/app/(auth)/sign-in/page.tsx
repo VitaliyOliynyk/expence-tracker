@@ -6,7 +6,7 @@ import { AuthCard } from "@/widgets/auth-card";
 
 export default async function SignInPage() {
   const session = await auth();
-  if (session?.user) redirect("/expenses");
+  if (session?.user) redirect("/categories");
 
   return (
     <AuthCard

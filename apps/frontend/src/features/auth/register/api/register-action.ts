@@ -29,5 +29,5 @@ export async function registerAction(input: RegisterInput): Promise<RegisterActi
     redirect: false,
   });
 
-  redirect("/expenses");
+  redirect("/categories");
 }

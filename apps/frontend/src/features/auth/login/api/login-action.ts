@@ -25,5 +25,5 @@ export async function loginAction(input: LoginInput): Promise<LoginActionResult>
     throw error;
   }
 
-  redirect("/expenses");
+  redirect("/categories");
 }
