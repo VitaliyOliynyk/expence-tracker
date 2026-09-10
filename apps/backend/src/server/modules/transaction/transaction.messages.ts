@@ -1,6 +1,8 @@
 import { defineCommand, defineQuery } from "../../bus/message";
 import type {
   CreateTransactionInput,
+  SummaryDto,
+  SummaryQuery,
   TransactionDto,
   TransactionListQuery,
   UpdateTransactionInput,
@@ -36,3 +38,9 @@ export const ListTransactionsQuery = defineQuery<
 export const GetTransactionQuery = defineQuery<{ userId: string; id: string }, TransactionDto | null>(
   "transaction.getById",
 );
+
+/** Suma transakcji jednego typu pogrupowana po kategorii albo miesiacu. */
+export const GetTransactionSummaryQuery = defineQuery<
+  { userId: string; query: SummaryQuery },
+  SummaryDto
+>("transaction.summary");

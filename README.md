@@ -58,7 +58,7 @@ Sprawdzenie, ze backend zyje:
 
 ```bash
 curl localhost:3001/api/health          # {"status":"ok","database":"up"}
-curl -i localhost:3001/api/expenses     # 401 - brak tokenu, tak ma byc
+curl -i localhost:3001/api/transactions # 401 - brak tokenu, tak ma byc
 ```
 
 ## Skrypty (korzen repo)
@@ -92,7 +92,7 @@ curl -i localhost:3001/api/expenses     # 401 - brak tokenu, tak ma byc
 - Rejestracja uzytkownika (hashowanie hasla jest gotowe:
   `apps/frontend/src/lib/password.ts`, scrypt z `node:crypto`).
 - Komponenty shadcn/ui: `pnpm --filter @expence/frontend dlx shadcn@latest add button input select`.
-- Widok kategorii i wykres podsumowania (endpoint `/api/summary` juz dziala).
+- Widok transakcji i wykres podsumowania (endpoint `/api/summary` liczy transakcje).
 - Testy (Vitest / Playwright) i CI.
 
 ## Wersje zaleznosci

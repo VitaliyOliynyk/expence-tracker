@@ -17,5 +17,5 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   // Tylko widoki panelu; /sign-in, /api/* i statyki zostaja poza matcherem.
-  matcher: ["/expenses/:path*", "/categories/:path*"],
+  matcher: ["/categories/:path*"],
 };

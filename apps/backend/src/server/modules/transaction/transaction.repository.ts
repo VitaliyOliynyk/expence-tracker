@@ -1,6 +1,6 @@
 import { prisma } from "@expence/db";
 import type { Category, Prisma, Transaction, TransactionType } from "@expence/db";
-import type { TransactionListQuery } from "@expence/types";
+import type { SummaryQuery, TransactionListQuery } from "@expence/types";
 
 /**
  * Jedyne miejsce w backendzie dotykajace prisma.transaction.
@@ -9,20 +9,27 @@ import type { TransactionListQuery } from "@expence/types";
 
 type TransactionWithCategory = Transaction & { category: Category };
 
+function dateWhere(dateFrom?: string, dateTo?: string): Prisma.TransactionWhereInput {
+  if (!dateFrom && !dateTo) return {};
+  return {
+    date: {
+      ...(dateFrom ? { gte: new Date(dateFrom) } : {}),
+      ...(dateTo ? { lte: new Date(dateTo) } : {}),
+    },
+  };
+}
+
 function listWhere(userId: string, query: TransactionListQuery): Prisma.TransactionWhereInput {
   return {
     userId,
     ...(query.type ? { type: query.type } : {}),
     ...(query.categoryId ? { categoryId: query.categoryId } : {}),
-    ...(query.dateFrom || query.dateTo
-      ? {
-          date: {
-            ...(query.dateFrom ? { gte: new Date(query.dateFrom) } : {}),
-            ...(query.dateTo ? { lte: new Date(query.dateTo) } : {}),
-          },
-        }
-      : {}),
+    ...dateWhere(query.dateFrom, query.dateTo),
   };
+}
+
+function summaryWhere(userId: string, query: SummaryQuery): Prisma.TransactionWhereInput {
+  return { userId, type: query.type, ...dateWhere(query.dateFrom, query.dateTo) };
 }
 
 export function findMany(
@@ -80,4 +87,28 @@ export async function deleteScoped(userId: string, id: string): Promise<number> 
 export async function categoryBelongsToUser(userId: string, categoryId: string): Promise<boolean> {
   const count = await prisma.category.count({ where: { id: categoryId, userId } });
   return count > 0;
+}
+
+export function sumByCategory(userId: string, query: SummaryQuery) {
+  return prisma.transaction.groupBy({
+    by: ["categoryId"],
+    where: summaryWhere(userId, query),
+    _sum: { amountCents: true },
+    _count: { _all: true },
+  });
+}
+
+export function findCategoriesByIds(userId: string, ids: string[]): Promise<Category[]> {
+  // Ten sam wyjatek co categoryBelongsToUser - kategorie nie sa jeszcze modulem CQRS.
+  return prisma.category.findMany({ where: { userId, id: { in: ids } } });
+}
+
+export function findAmountsByDate(
+  userId: string,
+  query: SummaryQuery,
+): Promise<{ date: Date; amountCents: number }[]> {
+  return prisma.transaction.findMany({
+    where: summaryWhere(userId, query),
+    select: { date: true, amountCents: true },
+  });
 }

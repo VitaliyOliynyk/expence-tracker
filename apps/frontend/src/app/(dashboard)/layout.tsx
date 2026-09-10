@@ -2,10 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth, signOut } from "@/auth";
 
-const NAV_ITEMS = [
-  { href: "/expenses", label: "Wydatki" },
-  { href: "/categories", label: "Kategorie" },
-];
+const NAV_ITEMS = [{ href: "/categories", label: "Kategorie" }];
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   // proxy.ts odsiewa niezalogowanych wczesniej; to druga bariera po stronie RSC.

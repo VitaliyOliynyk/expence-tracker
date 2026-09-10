@@ -1,16 +1,24 @@
 import { z } from "zod";
 import { currencySchema } from "./money";
+import { transactionTypeSchema } from "./transaction";
 
-export const summaryQuerySchema = z.object({
-  from: z.iso.datetime().optional(),
-  to: z.iso.datetime().optional(),
-  groupBy: z.enum(["category", "month"]).default("category"),
-});
+/** Podsumowanie transakcji jednego typu (domyslnie wydatkow) w przedziale dat. */
+export const summaryQuerySchema = z
+  .object({
+    dateFrom: z.iso.datetime().optional(),
+    dateTo: z.iso.datetime().optional(),
+    type: transactionTypeSchema.default("EXPENSE"),
+    groupBy: z.enum(["category", "month"]).default("category"),
+  })
+  .refine((q) => !q.dateFrom || !q.dateTo || q.dateFrom <= q.dateTo, {
+    message: "Data 'dateFrom' musi byc wczesniejsza niz 'dateTo'",
+    path: ["dateFrom"],
+  });
 export type SummaryQuery = z.infer<typeof summaryQuerySchema>;
 
 export const summaryBucketSchema = z.object({
-  /** id kategorii lub "YYYY-MM" przy groupBy=month; null = wydatki bez kategorii */
-  key: z.string().nullable(),
+  /** id kategorii lub "YYYY-MM" przy groupBy=month */
+  key: z.string(),
   label: z.string(),
   color: z.string().nullable(),
   totalCents: z.int(),

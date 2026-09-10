@@ -40,3 +40,10 @@ ze prompt powstal bez wiedzy o istniejacym modelu wydatkow.
   decyzja co z `currency`, paginacja i nullable kategoria, usuniecie `Expense`.
 - **C. Ujednolicic kontrakt** — oba modele zostaja, ale wyrownane nazwy filtrow
   i ksztalt odpowiedzi listy (z paginacja).
+
+## Decyzja (2026-09-11)
+
+Wybrano **B**. `Expense` usuniety z kodu, kontraktu i bazy (migracja `remove_expense`),
+`/api/summary` liczy `Transaction` (modul CQRS, `GetTransactionSummaryQuery`, parametry
+`dateFrom`/`dateTo`/`type`). Danych `Expense` nie przenoszono - byly tylko danymi dev z seeda,
+a seed tworzy teraz transakcje. Plan: `.claude/plans/main-page.md`.

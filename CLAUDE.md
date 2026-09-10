@@ -8,10 +8,12 @@ Zależności są zainstalowane, `.env` utworzony, klient Prismy wygenerowany,
 Postgres wstaje w kontenerze, `pnpm lint` i `pnpm typecheck` przechodzą na
 zero błędów. Pierwsza migracja istnieje i jest zaaplikowana, seed działa
 i tworzy `dev@expence.local` z realnym hasłem (`dev12345`). Logika backendu
-(`/api/expenses`, `/api/categories`, `/api/summary`, `/api/auth/*`,
+(`/api/categories`, `/api/summary`, `/api/auth/*`,
 `/api/transactions`) została
 uruchomiona przeciw bazie i zweryfikowana end-to-end (rejestracja, logowanie,
-izolacja danych między użytkownikami).
+izolacja danych między użytkownikami). Wczesny model `Expense` (i
+`/api/expenses`) usunęła migracja `remove_expense` — jedynym modelem ruchów
+pieniędzy jest `Transaction`.
 
 `/sign-in` i `/sign-up` są zaimplementowane (react-hook-form + shadcn/ui,
 Server Actions wołające `signIn`/`registerRequest`) i zweryfikowane w
@@ -19,9 +21,9 @@ przeglądarce end-to-end: rejestracja, walidacja klienta, logowanie,
 błędne hasło, wylogowanie. Zobacz "Frontend: Feature-Sliced Design" niżej.
 
 **Czego jeszcze nie ma:** runnera testów (ani Vitest, ani Playwright) i UI
-ponad `/sign-in`/`/sign-up` — listy i formularze wydatków/kategorii
-(`(dashboard)/*`) to wciąż gołe elementy HTML bez shadcn/ui, w starym
-płaskim układzie `components/`+`hooks/`+`lib/`.
+ponad `/sign-in`/`/sign-up` — nie ma jeszcze widoku transakcji, a lista i
+formularz kategorii (`(dashboard)/categories`) to wciąż gołe elementy HTML
+bez shadcn/ui, w starym płaskim układzie `components/`+`hooks/`+`lib/`.
 
 ## Bootstrap
 
@@ -55,7 +57,7 @@ Sprawdzenie backendu bez UI:
 
 ```bash
 curl localhost:3001/api/health        # {"status":"ok","database":"up"}
-curl -i localhost:3001/api/expenses   # 401 bez tokenu — tak ma być
+curl -i localhost:3001/api/transactions   # 401 bez tokenu — tak ma być
 
 # rejestracja i logowanie (patrz "Modul uzytkownika i autoryzacji" nizej)
 curl -X POST localhost:3001/api/auth/register -H 'Content-Type: application/json' \
@@ -76,7 +78,7 @@ Gałąź główna to **`master`** (nie `main`) i jest zawsze w stanie działają
 - **Nazwy branchy:** `<typ>/<opis>`, opis w kebab-case po angielsku, krótko.
   Typy: `feature/` (nowa funkcjonalność, np. `feature/main-page`), `fix/`
   (poprawka błędu), `refactor/` (zmiana struktury bez zmiany zachowania, np.
-  migracja `categories`/`expenses` na FSD), `docs/` (tylko dokumentacja),
+  migracja `categories` na FSD), `docs/` (tylko dokumentacja),
   `chore/` (zależności, skrypty, konfiguracja).
 - **Jeden branch = jedna intencja.** Nie dorzucaj niezwiązanych zmian "przy
   okazji" — zauważony problem poza zakresem to osobny branch.
@@ -180,10 +182,11 @@ plików — `auth.service.ts` nie widzi `user.repository.ts` ani Prismy.
   wystawia swój `*.messages.ts` — reszta backendu z niego korzysta tylko
   przez `dispatch(JakasQuery({ ... }))`.
 - `transaction` (`/api/transactions`, model `Transaction` z typem
-  `INCOME`/`EXPENSE`) to trzeci moduł na szynie — niezależny od `Expense`,
-  który zostaje w starym układzie `server/services/`. Jedyny wyjątek od
+  `INCOME`/`EXPENSE`) to trzeci moduł na szynie (zastąpił wczesny model `Expense`); obsługuje
+  też `/api/summary` przez `GetTransactionSummaryQuery`. Jedyny wyjątek od
   reguły "tylko przez szynę": `transaction.repository.ts` sprawdza
-  własność kategorii (`categoryBelongsToUser`) bezpośrednio przez
+  własność kategorii (`categoryBelongsToUser`) i dociąga ich nazwy do
+  podsumowania (`findCategoriesByIds`) bezpośrednio przez
   `prisma.category`, bo kategorie nie są jeszcze modułem CQRS i nie ma
   komu wysłać zapytania. Po migracji kategorii zamienia się to na
   `dispatch(...)`.
@@ -196,8 +199,8 @@ plików — `auth.service.ts` nie widzi `user.repository.ts` ani Prismy.
 Nowy kod frontendu — od modułu logowania/rejestracji wzwyż — powstaje wg
 [Feature-Sliced Design](https://feature-sliced.design/) zamiast dawnego
 płaskiego układu `components/`+`hooks/`+`lib/`. To migracja **częściowa i
-celowa**: `categories`/`expenses` (komponenty w `components/`, hooki w
-`hooks/`) zostają w starym układzie do osobnej migracji — nie przenoś ich
+celowa**: `categories` (komponenty w `components/`, hooki w
+`hooks/`) zostaje w starym układzie do osobnej migracji — nie przenoś ich
 przy okazji innej zmiany.
 
 Warstwy w `apps/frontend/src/`:
@@ -229,14 +232,14 @@ Warstwy w `apps/frontend/src/`:
   `entities/user` tylko po to, by zaznaczyć checkbox FSD, byłoby pustą
   abstrakcją.
 
-Gdy `categories`/`expenses` przejdą na FSD, dostają własne katalogi w
+Gdy `categories` przejdzie na FSD, dostanie własne katalogi w
 `entities/`/`features/` analogicznie do `features/auth/*`.
 
 ### `packages/types` to kontrakt, nie zbiór interfejsów
 
 Schematy Zod są jedynym źródłem prawdy o kształcie danych i regułach walidacji. Ten sam schemat działa w trzech miejscach: `parseJsonBody`/`parseQuery` w backendzie, `standardSchemaResolver` w formularzach react-hook-form i typowanie odpowiedzi w `api-client.ts`. Zmiana reguły walidacji **zawsze** zaczyna się tutaj — dopisanie jej osobno w handlerze albo w formularzu tworzy drugą, rozjeżdżającą się definicję.
 
-Uwaga na `createExpenseSchema`: ma transformację, więc typ wejściowy różni się od wyjściowego. `CreateExpenseFormValues` (`z.input`) trzyma react-hook-form, `CreateExpenseInput` (`z.infer`) dostaje backend — stąd trzyparametrowy generyk w `useForm`.
+Uwaga na `createTransactionSchema`: kwota idzie przez `amountInputSchema` z transformacją (tekst "12,50" → 1250 groszy), więc typ wejściowy różni się od wyjściowego. `CreateTransactionFormValues` (`z.input`) trzyma react-hook-form, `CreateTransactionInput` (`z.infer`) dostaje backend — stąd trzyparametrowy generyk w `useForm`.
 
 ### Pieniądze
 
@@ -262,4 +265,4 @@ Stos jest świeży i kilka rzeczy działa inaczej, niż podpowiada pamięć o st
 - Wewnątrz aplikacji Next importy idą przez alias `@/*` (→ `src/*`), bez rozszerzeń. W `packages/*` — ścieżki względne **bez** rozszerzenia (`./money`, nie `./money.js`). Do niedawna dokumentacja tu zalecała rozszerzenie `.js` (bo kod jest ESM-owy i uruchamiany też poza bundlerem, np. przez `tsx`) — `tsx` faktycznie obsługuje oba warianty, ale Turbopack (patrz "Pułapki wersji") nie rozwiązuje `.js` wskazującego na `.ts`, więc rozszerzenie zdjęto ze wszystkich plików w `packages/types` i `packages/db/src/index.ts`. `packages/db/prisma/seed.ts` (uruchamiany wyłącznie przez `tsx`, nigdy bundlowany) nadal może używać obu form.
 - Komentarze i komunikaty w kodzie są po polsku, bez znaków diakrytycznych (repo powstało w środowisku, gdzie były problematyczne). Trzymaj się tego w istniejących plikach.
 - Odpowiedzi backendu mają jednolity kształt: helpery `ok`/`created`/`noContent`/`fail` z `apps/backend/src/lib/http.ts`, błędy zgodne z `apiErrorSchema`. Nie zwracaj gołego `Response.json` z własnym kształtem błędu.
-- Klucze cache'a TanStack Query są scentralizowane w `apps/frontend/src/lib/query-keys.ts`; mutacja unieważnia całe gałęzie (`queryKeys.expenses.all`), nie pojedyncze wpisy.
+- Klucze cache'a TanStack Query są scentralizowane w `apps/frontend/src/lib/query-keys.ts`; mutacja unieważnia całe gałęzie (`queryKeys.summary.all`), nie pojedyncze wpisy.
