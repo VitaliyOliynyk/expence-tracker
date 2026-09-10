@@ -6,7 +6,7 @@ import { AuthCard } from "@/widgets/auth-card";
 
 export default async function SignUpPage() {
   const session = await auth();
-  if (session?.user) redirect("/categories");
+  if (session?.user) redirect("/transactions");
 
   return (
     <AuthCard

@@ -1,6 +1,5 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { registerSchema, type RegisterInput } from "@expence/types";
 import { signIn } from "@/auth";
 import { AuthApiError, registerRequest } from "@/lib/auth-api";
@@ -28,6 +27,5 @@ export async function registerAction(input: RegisterInput): Promise<RegisterActi
     password: parsed.data.password,
     redirect: false,
   });
-
-  redirect("/categories");
+  // Przekierowanie robi klient twardym przeladowaniem - patrz lib/session-navigation.ts.
 }
