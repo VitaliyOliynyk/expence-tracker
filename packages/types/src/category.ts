@@ -20,6 +20,8 @@ export const createCategorySchema = z.object({
   icon: z.string().trim().max(32).nullish(),
 });
 export type CreateCategoryInput = z.infer<typeof createCategorySchema>;
+/** Ksztalt PRZED walidacja - to trzyma react-hook-form (color opcjonalny, ma default). */
+export type CreateCategoryFormValues = z.input<typeof createCategorySchema>;
 
 export const updateCategorySchema = createCategorySchema.partial();
 export type UpdateCategoryInput = z.infer<typeof updateCategorySchema>;
