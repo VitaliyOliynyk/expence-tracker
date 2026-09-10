@@ -1,0 +1,22 @@
+{
+  "name": "@expence/auth",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "jose": "^6.2.12"
+  },
+  "devDependencies": {
+    "@expence/config": "workspace:*",
+    "@types/node": "^22.20.2",
+    "typescript": "^6.0.3"
+  }
+}

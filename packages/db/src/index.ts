@@ -1,5 +1,5 @@
 import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "./generated/prisma/client.js";
+import { PrismaClient } from "./generated/prisma/client";
 
 // Prisma 7 nie czyta juz URL-a ze schematu - polaczenie idzie przez driver adapter.
 function createPrismaClient(): PrismaClient {
@@ -25,4 +25,4 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 export { PrismaClient };
-export * from "./generated/prisma/client.js";
+export * from "./generated/prisma/client";

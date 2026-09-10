@@ -7,7 +7,7 @@ import type { NextConfig } from "next";
 loadEnv({ path: resolve(dirname(fileURLToPath(import.meta.url)), "../../.env") });
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@expence/db", "@expence/types"],
+  transpilePackages: ["@expence/auth", "@expence/db", "@expence/types"],
   serverExternalPackages: ["@prisma/client", "@prisma/adapter-pg"],
 };
 

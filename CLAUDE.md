@@ -4,14 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Stan repozytorium
 
-Szkielet z działającym toolingiem. Zależności są zainstalowane, `.env`
-utworzony, klient Prismy wygenerowany, Postgres wstaje w kontenerze,
-`pnpm lint` i `pnpm typecheck` przechodzą na zero błędów.
+Zależności są zainstalowane, `.env` utworzony, klient Prismy wygenerowany,
+Postgres wstaje w kontenerze, `pnpm lint` i `pnpm typecheck` przechodzą na
+zero błędów. Pierwsza migracja istnieje i jest zaaplikowana, seed działa
+i tworzy `dev@expence.local` z realnym hasłem (`dev12345`). Logika backendu
+(`/api/expenses`, `/api/categories`, `/api/summary`, `/api/auth/*`) została
+uruchomiona przeciw bazie i zweryfikowana end-to-end (rejestracja, logowanie,
+izolacja danych między użytkownikami).
 
-**Czego jeszcze nie ma:** żadnej migracji (schemat nie istnieje w bazie),
-danych z seeda, runnera testów (ani Vitest, ani Playwright) i UI ponad
-placeholdery. Logika backendu (`/api/expenses`, `/api/categories`,
-`/api/summary`) jest napisana, ale nie została uruchomiona przeciw bazie.
+**Czego jeszcze nie ma:** runnera testów (ani Vitest, ani Playwright) i UI
+ponad placeholdery (`/sign-in`, `/sign-up` to gołe formularze bez
+react-hook-form/shadcn).
 
 ## Bootstrap
 
@@ -38,13 +41,20 @@ Wszystkie z korzenia repo:
 | `pnpm db:up` / `db:down` / `db:reset` | kontener Postgresa (`db:reset` kasuje wolumen) |
 | `pnpm db:migrate` / `db:seed` / `db:studio` | migracje, dane startowe, Prisma Studio |
 
-Pojedynczy pakiet: `pnpm --filter @expence/backend <skrypt>`. Nazwy: `@expence/frontend`, `@expence/backend`, `@expence/db`, `@expence/types`, `@expence/config`.
+Pojedynczy pakiet: `pnpm --filter @expence/backend <skrypt>`. Nazwy: `@expence/frontend`, `@expence/backend`, `@expence/db`, `@expence/types`, `@expence/auth`, `@expence/config`.
 
 Sprawdzenie backendu bez UI:
 
 ```bash
 curl localhost:3001/api/health        # {"status":"ok","database":"up"}
 curl -i localhost:3001/api/expenses   # 401 bez tokenu — tak ma być
+
+# rejestracja i logowanie (patrz "Modul uzytkownika i autoryzacji" nizej)
+curl -X POST localhost:3001/api/auth/register -H 'Content-Type: application/json' \
+  -d '{"name":"Jan","email":"jan@example.com","password":"tajnehaslo"}'
+TOKEN=$(curl -s -X POST localhost:3001/api/auth/login -H 'Content-Type: application/json' \
+  -d '{"email":"dev@expence.local","password":"dev12345"}' | jq -r .token)
+curl localhost:3001/api/auth/me -H "Authorization: Bearer $TOKEN"
 ```
 
 ## Architektura
@@ -54,27 +64,77 @@ Dwie **osobne** aplikacje Next.js w jednym monorepo pnpm. `apps/frontend` to ca�
 ### Przepływ autoryzacji — najważniejsza rzecz do zrozumienia
 
 Sesja istnieje tylko we frontendzie. Backend jest bezstanowy i nie zna cookies.
+Backend jest też jedynym miejscem, które zna hasła — trzyma je moduł
+użytkownika (`apps/backend/src/server/modules/user/`), Auth.js po stronie
+frontendu tylko z niego korzysta.
 
 ```
+                    POST /api/auth/register|login
+przeglądarka ───────────────────────────────────────→ backend :3001
+                                                        │  auth.service -> user.service (przez CQRS)
+                                                        ▼
+                                              { user, token, expiresAt }
+
 przeglądarka ──(cookie sesji Auth.js)──→ frontend :3000
+                                          │  authorize() -> POST /api/auth/login (patrz nizej)
                                           │  GET /api/token
                                           ▼
                               JWT HS256 (sub=userId, exp=10 min)
                                           │
 przeglądarka ──(Authorization: Bearer)──→ backend :3001
-                                          │  proxy.ts → jwtVerify(AUTH_SECRET)
+                                          │  src/proxy.ts → verifyAccessToken(AUTH_SECRET)
                                           ▼
                               handler czyta userId z nagłówka x-user-id
 ```
 
-Frontend **nie** przekazuje dalej cookie Auth.js — to zaszyfrowany JWE związany z wewnętrznym formatem next-auth v5. Zamiast tego `src/lib/access-token.ts` bije własny, krótkożyciowy token HS256 tym samym `AUTH_SECRET`, a `src/lib/api-client.ts` cache'uje go w pamięci karty i odświeża z 30-sekundowym zapasem. Backend weryfikuje go w `src/lib/jwt.ts`.
+`apps/frontend/src/auth.ts` (Auth.js, provider Credentials) **nie** dotyka
+Prismy ani hasha hasła — `authorize()` woła `POST /api/auth/login` przez
+`src/lib/auth-api.ts` i dostaje gotowy `{ user, token }`. Sesja przeglądarki
+to nadal zaszyfrowane JWE Auth.js, niezwiązane z tokenem API. Do wywołania
+`/api/*` z przeglądarki frontend **nie** przekazuje dalej tego cookie —
+zamiast tego `GET /api/token` bije osobny, krótkożyciowy token HS256 tym
+samym `AUTH_SECRET` (funkcja `signAccessToken` z `@expence/auth`), a
+`src/lib/api-client.ts` cache'uje go w pamięci karty i odświeża z
+30-sekundowym zapasem. Backend weryfikuje go w `src/lib/jwt.ts` (re-eksport
+`verifyAccessToken` z `@expence/auth`).
 
 Konsekwencje przy zmianach:
 
 - **`AUTH_SECRET` musi być identyczny po obu stronach.** Rozjazd = każde żądanie 401 bez czytelnego powodu.
-- **`userId` nigdy nie pochodzi z body ani z query.** Jedyne źródło to nagłówek `x-user-id`, który ustawia `apps/backend/proxy.ts` po weryfikacji tokenu; handlery sięgają po niego przez `requireUserId()` z `src/lib/auth-context.ts`. Przyjęcie `userId` z payloadu otwiera IDOR.
-- Serwisy zawężają **każde** zapytanie do `userId`. Modyfikacje idą przez `updateMany`/`deleteMany` z `where: { id, userId }` — nie przez `update`/`delete` po samym `id`, bo te nie odsieją cudzego rekordu.
-- Nowy publiczny endpoint trzeba dopisać do `PUBLIC_PATHS` w `apps/backend/proxy.ts`, inaczej proxy odetnie go na 401.
+- **`userId` nigdy nie pochodzi z body ani z query.** Jedyne źródło to nagłówek `x-user-id`, który ustawia `apps/backend/src/proxy.ts` po weryfikacji tokenu; handlery sięgają po niego przez `requireUserId()` z `src/lib/auth-context.ts`. Przyjęcie `userId` z payloadu otwiera IDOR.
+- Serwisy zawężają **każde** zapytanie do `userId`. Modyfikacje idą przez `updateMany`/`deleteMany` z `where: { id, userId }` — nie przez `update`/`delete` po samym `id`, bo te nie odsieją cudzego rekordu. Wyjątek: repozytorium modułu użytkownika modyfikuje `User` przez `update({ where: { id } })` — tu `id` **jest** samym rekordem właściciela (nie ma osobnego pola `userId`), więc nie ma czego dodatkowo zawężać.
+- Nowy publiczny endpoint trzeba dopisać do `PUBLIC_PATHS` w `apps/backend/src/proxy.ts`, inaczej proxy odetnie go na 401. `/api/auth/login` i `/api/auth/register` już tam są; `/api/auth/me` celowo nie.
+- **Hasła nigdy nie hashuj poza `@expence/auth`.** `hashPassword`/`verifyPassword` (scrypt, `node:crypto`) mieszkają tam jednym miejscem — konsumenci to moduł użytkownika w backendzie i `packages/db/prisma/seed.ts`. Frontend nie ma już własnej kopii.
+
+### Moduł użytkownika i autoryzacji (CQRS)
+
+`apps/backend/src/server/modules/{user,auth}/` to dwa moduły, które
+rozmawiają ze sobą **wyłącznie przez komendy/zapytania na szynie**
+(`apps/backend/src/server/bus/`), nigdy przez bezpośredni import cudzych
+plików — `auth.service.ts` nie widzi `user.repository.ts` ani Prismy.
+
+- Każdy moduł ma jeden plik `*.messages.ts` — to jedyny plik importowany
+  z zewnątrz modułu (definicje wiadomości `defineCommand`/`defineQuery` +
+  typy payloadu/wyniku). Reszta (`*.repository.ts`, `*.service.ts`,
+  `*.handlers.ts`, `*.mapper.ts`, `*.errors.ts`) jest szczegółem
+  implementacyjnym.
+- Komenda zmienia stan i ma dokładnie jednego handlera; zapytanie tylko
+  czyta. `LoginCommand` jest komendą mimo że "czyta" hasło — aktualizuje
+  `lastLoginAt`.
+- `apps/backend/src/server/bus/index.ts` to jedyne miejsce, które zna
+  komplet handlerów wszystkich modułów (`registerUserHandlers`,
+  `registerAuthHandlers`) i cache'uje instancję szyny na `globalThis` —
+  bez tego hot reload w dev rejestrowałby handlery po raz drugi i wywalał
+  serwer (ten sam zabieg co dla `prisma` w `packages/db/src/index.ts`).
+- Serwisy przyjmują `dispatch` jako argument zamiast importować singleton
+  z `bus/index.ts` — inaczej powstałby cykl importów (`bus/index.ts` →
+  `auth.handlers.ts` → `auth.service.ts` → `bus/index.ts`).
+- `passwordHash` nigdy nie przekracza granicy modułu użytkownika: zamiast
+  oddawać hash, `VerifyUserCredentialsQuery` zwraca wyłącznie werdykt
+  (`{ userId, isActive } | null`).
+- Nowy moduł dopisuje własny `register*Handlers(bus)` w `bus/index.ts` i
+  wystawia swój `*.messages.ts` — reszta backendu z niego korzysta tylko
+  przez `dispatch(JakasQuery({ ... }))`.
 
 ### `packages/types` to kontrakt, nie zbiór interfejsów
 
@@ -90,7 +150,7 @@ Kwoty to `Int` w groszach (`amountCents`) w całym stosie — nigdy `Float`. Kon
 
 Stos jest świeży i kilka rzeczy działa inaczej, niż podpowiada pamięć o starszych wersjach:
 
-- **Next 16 przemianował `middleware.ts` na `proxy.ts`** — plik eksportuje funkcję `proxy`, nie `middleware`. Oba appy mają swój, o różnych zadaniach: backendowy robi CORS i weryfikację tokenu, frontendowy tylko tanie sprawdzenie obecności cookie (właściwa autoryzacja jest w `(dashboard)/layout.tsx`).
+- **Next 16 przemianował `middleware.ts` na `proxy.ts`** — plik eksportuje funkcję `proxy`, nie `middleware`. Oba appy mają swój, o różnych zadaniach: backendowy robi CORS i weryfikację tokenu, frontendowy tylko tanie sprawdzenie obecności cookie (właściwa autoryzacja jest w `(dashboard)/layout.tsx`). **Plik musi leżeć na tym samym poziomie co `app`** — tu obie aplikacje mają `app` w `src/`, więc `proxy.ts` jest w `apps/{backend,frontend}/src/proxy.ts`, NIE w korzeniu pakietu. Przy złej lokalizacji Next **nie zgłasza błędu** — proxy po prostu nigdy się nie uruchamia (zero logów z jego wnętrza), a każdy request przechodzi prosto do route handlera. Jeśli token z `/api/auth/login` daje 401 mimo poprawnego `AUTH_SECRET`, to pierwsze podejrzenie.
 - **Prisma 7 nie przyjmuje `url` w bloku `datasource`** — schemat się nie zwaliduje (P1012). Connection string jest w `packages/db/prisma.config.ts`, a `PrismaClient` łączy się przez driver adapter `@prisma/adapter-pg` przekazany w konstruktorze. Generator to `prisma-client` (nie `prisma-client-js`) z **wymaganym** `output`; klient ląduje w `packages/db/src/generated/`, które jest w `.gitignore`.
 - Generator `prisma-client` nie ładuje `.env` sam. Skrypty CLI (seed, migracje) muszą zaimportować `packages/db/src/load-env.ts` **przed** `src/index.ts`; aplikacje dostają env z `next.config.ts`.
 - **Jeden wspólny `.env` leży w korzeniu monorepo**, a Next szuka go tylko w katalogu aplikacji — dlatego oba `next.config.ts` dociągają go przez `dotenv`. Dodając trzecią aplikację, powtórz ten zabieg.
@@ -98,10 +158,11 @@ Stos jest świeży i kilka rzeczy działa inaczej, niż podpowiada pamięć o st
 - `next-auth` jest w becie (`5.0.0-beta.32`), wersja przypięta dokładnie, bez `^`.
 - **Cztery zależności są celowo niższe niż tag `latest` — nie podbijaj ich bez sprawdzenia.** TypeScript stoi na `^6.0.3`, bo `typescript-eslint` 8.70 odmawia startu na TS 7.0. ESLint stoi na `^9.39.5`, bo `eslint-plugin-react` 7.37.5 woła usunięte w ESLint 10 `context.getFilename()`. Prisma stoi na `^7.10.0`, bo `latest` to `8.0.0-rc`. `next-auth` — jak wyżej.
 - TS 6 deprecjonuje `baseUrl` (błąd TS5101). `paths` w obu `tsconfig.json` liczą się względem pliku tsconfig, bez `baseUrl` — nie dodawaj go z powrotem.
+- **Turbopack (Next 16) nie rozwiązuje relatywnych importów `./plik.js` wskazujących na `./plik.ts`** wewnątrz pakietów z `transpilePackages` — "Module not found: Can't resolve './plik.js'", zarówno w zwykłych route'ach jak i w `proxy.ts`. `tsx` (seed, migracje) toleruje oba warianty. Dlatego `packages/types` i `packages/db` mają te importy **bez** rozszerzenia — zobacz "Konwencje" niżej.
 
 ## Konwencje
 
-- Wewnątrz aplikacji Next importy idą przez alias `@/*` (→ `src/*`), bez rozszerzeń. W `packages/*` — ścieżki względne z rozszerzeniem `.js` (kod jest ESM-owy i uruchamiany też poza bundlerem).
+- Wewnątrz aplikacji Next importy idą przez alias `@/*` (→ `src/*`), bez rozszerzeń. W `packages/*` — ścieżki względne **bez** rozszerzenia (`./money`, nie `./money.js`). Do niedawna dokumentacja tu zalecała rozszerzenie `.js` (bo kod jest ESM-owy i uruchamiany też poza bundlerem, np. przez `tsx`) — `tsx` faktycznie obsługuje oba warianty, ale Turbopack (patrz "Pułapki wersji") nie rozwiązuje `.js` wskazującego na `.ts`, więc rozszerzenie zdjęto ze wszystkich plików w `packages/types` i `packages/db/src/index.ts`. `packages/db/prisma/seed.ts` (uruchamiany wyłącznie przez `tsx`, nigdy bundlowany) nadal może używać obu form.
 - Komentarze i komunikaty w kodzie są po polsku, bez znaków diakrytycznych (repo powstało w środowisku, gdzie były problematyczne). Trzymaj się tego w istniejących plikach.
 - Odpowiedzi backendu mają jednolity kształt: helpery `ok`/`created`/`noContent`/`fail` z `apps/backend/src/lib/http.ts`, błędy zgodne z `apiErrorSchema`. Nie zwracaj gołego `Response.json` z własnym kształtem błędu.
 - Klucze cache'a TanStack Query są scentralizowane w `apps/frontend/src/lib/query-keys.ts`; mutacja unieważnia całe gałęzie (`queryKeys.expenses.all`), nie pojedyncze wpisy.

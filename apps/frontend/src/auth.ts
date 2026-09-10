@@ -2,13 +2,8 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@expence/db";
-import { z } from "zod";
-import { verifyPassword } from "@/lib/password";
-
-const credentialsSchema = z.object({
-  email: z.email(),
-  password: z.string().min(8),
-});
+import { loginSchema } from "@expence/types";
+import { AuthApiError, loginRequest } from "@/lib/auth-api";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
@@ -21,17 +16,27 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         email: { label: "E-mail", type: "email" },
         password: { label: "Haslo", type: "password" },
       },
+      // Haslo weryfikuje backend (POST /api/auth/login) - authorize() nie dotyka
+      // juz Prismy ani hasha. Bledy inne niz zle dane logowania (np. konto
+      // nieaktywne) traktujemy tu jak zwykla porazke logowania.
       async authorize(raw) {
-        const parsed = credentialsSchema.safeParse(raw);
+        const parsed = loginSchema.safeParse(raw);
         if (!parsed.success) return null;
 
-        const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
-        if (!user) return null;
+        try {
+          const result = await loginRequest(parsed.data);
+          if (!result) return null;
 
-        const valid = await verifyPassword(parsed.data.password, user.passwordHash);
-        if (!valid) return null;
-
-        return { id: user.id, email: user.email, name: user.name, image: user.image };
+          return {
+            id: result.user.id,
+            email: result.user.email,
+            name: result.user.name,
+            image: result.user.image,
+          };
+        } catch (error) {
+          if (error instanceof AuthApiError) return null;
+          throw error;
+        }
       },
     }),
     // Tu dokladasz providery OAuth (GitHub, Google) - adapter Prisma juz je obsluzy.

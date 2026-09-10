@@ -42,6 +42,9 @@ export default async function SignInPage() {
           Zaloguj
         </button>
       </form>
+      <a href="/sign-up" className="text-center text-sm text-muted-foreground underline">
+        Nie masz konta? Zaloz je
+      </a>
     </main>
   );
 }

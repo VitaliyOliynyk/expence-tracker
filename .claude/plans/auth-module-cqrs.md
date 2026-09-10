@@ -12,6 +12,19 @@ Cel: API staje się źródłem prawdy o tożsamości. Powstają dwa moduły — 
 
 Decyzje podjęte z użytkownikiem: backend źródłem prawdy; **sam access token** (bez refresh tokenu, bez nowych tabel); do `User` dochodzą `updatedAt`, `lastLoginAt`, `isActive`. Wzorzec repozytorium i CQRS wprowadzamy **tylko w nowych modułach** — `expense.service.ts`, `category.service.ts` i `summary.service.ts` zostają nietknięte (pytanie o refaktor zostało bez odpowiedzi, biorę wariant o najmniejszym diffie; ścieżka migracji starych serwisów na szynę jest opisana na końcu).
 
+## Postęp realizacji
+
+- [x] 1. Szyna CQRS (`apps/backend/src/server/bus/`)
+- [x] 2. Pakiet `@expence/auth`
+- [x] 3. `packages/types/src/auth.ts`
+- [x] 4. Prisma: pola `User` + migracja + seed
+- [x] 5. Moduł użytkownika (`modules/user/`)
+- [x] 6. Moduł autoryzacji (`modules/auth/`)
+- [x] 7. Route handlery + `proxy.ts`
+- [x] 8. Frontend (Auth.js, `/sign-up`)
+- [x] 9. Dokumentacja (`CLAUDE.md`)
+- [x] 10. Weryfikacja end-to-end
+
 ---
 
 ## 1. Szyna CQRS — `apps/backend/src/server/bus/`
@@ -200,6 +213,27 @@ const PUBLIC_PATHS = ["/api/health", "/api/auth/login", "/api/auth/register"];
 ```
 
 `/api/auth/me` celowo **nie** trafia na tę listę.
+
+> **Odkryty i naprawiony pre-existing bug (nie z tego planu, ale blokujacy caly backend):**
+> `apps/backend/proxy.ts` i `apps/frontend/proxy.ts` lezaly w korzeniu pakietu, a `app/`
+> jest w `src/app/`. Next 16 wymaga, zeby `proxy.ts` byl **na tym samym poziomie co `app`**
+> ("Create a proxy.ts file... located at the same level as pages or app" — patrz
+> `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/proxy.md`).
+> Przy zlej lokalizacji proxy.ts nigdy sie nie uruchamial (zero logow, zaden `console.error`
+> w jego ciele nie drukowal sie), a kazdy chroniony route "dzialal" tylko dzieki wlasnemu
+> `requireUserId()` jako drugiej barierze — token z `/api/auth/login` zawsze konczyl sie 401,
+> bo `x-user-id` nigdy nie byl ustawiany. Naprawa: `mv apps/backend/proxy.ts apps/backend/src/proxy.ts`
+> (analogicznie dla frontendu). Zero zmian w tresci plikow. Odkryte dopiero teraz, bo
+> CLAUDE.md przyznaje, ze backend nigdy nie byl uruchomiony przeciw bazie przed ta sesja.
+>
+> Druga odkryta pre-existing wada: relatywne importy z rozszerzeniem `.js` wskazujace na
+> pliki `.ts` (`packages/types/src/index.ts` i siostrzane pliki, `packages/db/src/index.ts`)
+> psuly bundling Turbopacka dla App Route i Middleware ("Module not found: Can't resolve
+> './money.js'") — mimo ze to dokladnie konwencja opisana w CLAUDE.md ("sciezki wzgledne
+> z rozszerzeniem .js"). `tsx` (seed, migracje) toleruje **oba** warianty, wiec usunieto
+> rozszerzenia z tych plikow; nowy pakiet `@expence/auth` od razu pisany bez rozszerzen.
+> `packages/db/prisma/seed.ts` (uruchamiany wylacznie przez tsx, nigdy bundlowany) zostal
+> bez zmian.
 
 ## 8. Frontend — Auth.js przestaje dotykać Prismy
 

@@ -23,7 +23,11 @@ model User {
   image         String?
   // Uzywane przez provider Credentials; puste dla kont OAuth.
   passwordHash  String?
+  // Miekka blokada konta - login() odrzuca nieaktywnego uzytkownika (403).
+  isActive      Boolean   @default(true)
+  lastLoginAt   DateTime?
   createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   accounts   Account[]
   sessions   Session[]

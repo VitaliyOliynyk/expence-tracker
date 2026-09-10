@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { amountCentsSchema, amountInputSchema, currencySchema, DEFAULT_CURRENCY } from "./money.js";
-import { categoryDtoSchema } from "./category.js";
+import { amountCentsSchema, amountInputSchema, currencySchema, DEFAULT_CURRENCY } from "./money";
+import { categoryDtoSchema } from "./category";
 
 export const expenseDtoSchema = z.object({
   id: z.uuid(),

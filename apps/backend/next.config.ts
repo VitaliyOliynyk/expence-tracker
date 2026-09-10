@@ -9,7 +9,7 @@ loadEnv({ path: resolve(dirname(fileURLToPath(import.meta.url)), "../../.env") }
 
 const nextConfig: NextConfig = {
   // Pakiety workspace'owe sa publikowane jako zrodla TS - Next musi je skompilowac.
-  transpilePackages: ["@expence/db", "@expence/types"],
+  transpilePackages: ["@expence/auth", "@expence/db", "@expence/types"],
   // Klient Prismy nie moze byc bundlowany - trzyma natywne silniki zapytan.
   serverExternalPackages: ["@prisma/client", "@prisma/adapter-pg"],
 };

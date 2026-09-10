@@ -1,5 +1,5 @@
+import { signAccessToken } from "@expence/auth";
 import { auth } from "@/auth";
-import { signAccessToken } from "@/lib/access-token";
 
 /**
  * Mennica tokenow dla przegladarki: zamienia cookie sesyjne Auth.js na

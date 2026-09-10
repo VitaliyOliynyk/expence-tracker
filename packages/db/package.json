@@ -23,6 +23,7 @@
     "@prisma/client": "^7.10.0"
   },
   "devDependencies": {
+    "@expence/auth": "workspace:*",
     "@expence/config": "workspace:*",
     "@types/node": "^22.20.2",
     "dotenv": "^17.4.2",

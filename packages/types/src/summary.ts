@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { currencySchema } from "./money.js";
+import { currencySchema } from "./money";
 
 export const summaryQuerySchema = z.object({
   from: z.iso.datetime().optional(),

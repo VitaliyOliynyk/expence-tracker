@@ -28,3 +28,12 @@ export async function verifyPassword(password: string, stored: string | null): P
   // timingSafeEqual zamiast === : porownanie w stalym czasie.
   return derived.length === expected.length && timingSafeEqual(derived, expected);
 }
+
+/**
+ * Staly hash do porownania "na pusto", gdy uzytkownik o podanym e-mailu nie istnieje.
+ * Bez tego czas odpowiedzi login() zdradzalby, ktore adresy sa zarejestrowane
+ * (brak uzytkownika = natychmiastowy return, istniejacy = pelny koszt scrypt).
+ * Haslo pod tym hashem nigdy nie zostanie sprawdzone poprawnie - to celowe.
+ */
+export const DUMMY_PASSWORD_HASH =
+  "scrypt$00000000000000000000000000000000$00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";

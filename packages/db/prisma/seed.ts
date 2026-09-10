@@ -3,9 +3,11 @@
  * Uruchomienie: pnpm db:seed  (skrypt wskazany w prisma.config.ts)
  */
 import "../src/load-env.js"; // musi byc pierwszy - ustawia DATABASE_URL dla klienta
+import { hashPassword } from "@expence/auth";
 import { prisma } from "../src/index.js";
 
 const DEV_USER_EMAIL = "dev@expence.local";
+const DEV_USER_PASSWORD = "dev12345";
 
 const DEFAULT_CATEGORIES = [
   { name: "Jedzenie", color: "#ef4444", icon: "utensils" },
@@ -23,14 +25,16 @@ function daysAgo(days: number): Date {
 }
 
 async function main() {
+  const passwordHash = await hashPassword(DEV_USER_PASSWORD);
+
   const user = await prisma.user.upsert({
     where: { email: DEV_USER_EMAIL },
-    update: {},
+    // update tez ustawia hash - naprawia konto zseedowane przed wprowadzeniem hasel.
+    update: { passwordHash },
     create: {
       email: DEV_USER_EMAIL,
       name: "Dev User",
-      // Hash dopisuje sie przy rejestracji - seed tworzy konto bez hasla.
-      passwordHash: null,
+      passwordHash,
     },
   });
 
@@ -82,7 +86,9 @@ async function main() {
     });
   }
 
-  console.log(`Seed gotowy: ${user.email}, kategorii: ${categories.length}`);
+  console.log(
+    `Seed gotowy: ${user.email} / ${DEV_USER_PASSWORD}, kategorii: ${categories.length}`,
+  );
 }
 
 main()
