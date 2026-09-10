@@ -2,6 +2,14 @@ import { prisma } from "@expence/db";
 import type { CategoryDto, CreateCategoryInput, UpdateCategoryInput } from "@expence/types";
 import { toCategoryDto } from "../mappers";
 
+/** Kategoria ma przypisane transakcje (FK Transaction.categoryId z onDelete: Restrict). */
+export class CategoryInUseError extends Error {
+  constructor(id: string) {
+    super(`Kategoria ${id} ma przypisane transakcje`);
+    this.name = "CategoryInUseError";
+  }
+}
+
 export async function listCategories(userId: string): Promise<CategoryDto[]> {
   const categories = await prisma.category.findMany({
     where: { userId },
@@ -45,6 +53,14 @@ export async function updateCategory(
 }
 
 export async function deleteCategory(userId: string, id: string): Promise<boolean> {
-  const { count } = await prisma.category.deleteMany({ where: { id, userId } });
-  return count > 0;
+  try {
+    const { count } = await prisma.category.deleteMany({ where: { id, userId } });
+    return count > 0;
+  } catch (error) {
+    // P2003 = naruszenie klucza obcego - kategorie trzymaja transakcje (Restrict).
+    if (error && typeof error === "object" && "code" in error && error.code === "P2003") {
+      throw new CategoryInUseError(id);
+    }
+    throw error;
+  }
 }

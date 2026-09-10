@@ -8,7 +8,8 @@ Zależności są zainstalowane, `.env` utworzony, klient Prismy wygenerowany,
 Postgres wstaje w kontenerze, `pnpm lint` i `pnpm typecheck` przechodzą na
 zero błędów. Pierwsza migracja istnieje i jest zaaplikowana, seed działa
 i tworzy `dev@expence.local` z realnym hasłem (`dev12345`). Logika backendu
-(`/api/expenses`, `/api/categories`, `/api/summary`, `/api/auth/*`) została
+(`/api/expenses`, `/api/categories`, `/api/summary`, `/api/auth/*`,
+`/api/transactions`) została
 uruchomiona przeciw bazie i zweryfikowana end-to-end (rejestracja, logowanie,
 izolacja danych między użytkownikami).
 
@@ -31,7 +32,8 @@ cp .env.example .env
 openssl rand -base64 32     # wynik wklej jako AUTH_SECRET
 pnpm install
 pnpm db:up                  # Postgres 17 w kontenerze
-pnpm db:migrate             # pierwsza migracja + prisma generate
+pnpm db:migrate             # pierwsza migracja
+pnpm db:generate            # Prisma 7: migrate dev NIE generuje już klienta
 pnpm db:seed                # dev@expence.local + kategorie startowe
 ```
 
@@ -141,6 +143,17 @@ plików — `auth.service.ts` nie widzi `user.repository.ts` ani Prismy.
 - Nowy moduł dopisuje własny `register*Handlers(bus)` w `bus/index.ts` i
   wystawia swój `*.messages.ts` — reszta backendu z niego korzysta tylko
   przez `dispatch(JakasQuery({ ... }))`.
+- `transaction` (`/api/transactions`, model `Transaction` z typem
+  `INCOME`/`EXPENSE`) to trzeci moduł na szynie — niezależny od `Expense`,
+  który zostaje w starym układzie `server/services/`. Jedyny wyjątek od
+  reguły "tylko przez szynę": `transaction.repository.ts` sprawdza
+  własność kategorii (`categoryBelongsToUser`) bezpośrednio przez
+  `prisma.category`, bo kategorie nie są jeszcze modułem CQRS i nie ma
+  komu wysłać zapytania. Po migracji kategorii zamienia się to na
+  `dispatch(...)`.
+- `Transaction.categoryId` ma `onDelete: Restrict` — usunięcie kategorii z
+  transakcjami kończy się `P2003`, które `category.service.ts` tłumaczy na
+  `CategoryInUseError`, a route na `409 CONFLICT`.
 
 ### Frontend: Feature-Sliced Design (FSD)
 

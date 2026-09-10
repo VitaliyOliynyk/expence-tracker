@@ -2,6 +2,7 @@ import { createBus } from "./bus";
 import type { Bus, Dispatch } from "./bus";
 import { registerUserHandlers } from "../modules/user/user.handlers";
 import { registerAuthHandlers } from "../modules/auth/auth.handlers";
+import { registerTransactionHandlers } from "../modules/transaction/transaction.handlers";
 
 /**
  * Jedyne miejsce, ktore zna komplet handlerow wszystkich modulow.
@@ -11,6 +12,7 @@ function createAppBus(): Bus {
   const bus = createBus();
   registerUserHandlers(bus);
   registerAuthHandlers(bus);
+  registerTransactionHandlers(bus);
   return bus;
 }
 
