@@ -8,6 +8,9 @@ out/
 dist/
 build/
 *.tsbuildinfo
+# generuje Next (dev/build/typegen); importy przelaczaja sie miedzy
+# .next/dev/types (dev) a .next/types (build), wiec nie trafia do repo
+next-env.d.ts
 
 # Prisma - klient generowany do repo NIE trafia
 packages/db/src/generated/
