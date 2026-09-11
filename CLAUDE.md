@@ -92,7 +92,15 @@ Gałąź główna to **`master`** (nie `main`) i jest zawsze w stanie działają
 - **Branch krótkożyciowy.** Przed mergem zaktualizuj go względem `master`
   przez `git rebase master` (branche są lokalne i niewspółdzielone, więc
   przepisanie historii jest bezpieczne).
-- **Commity** małe i spójne, opis po polsku (jak w dotychczasowej historii).
+- **Commity** małe i spójne, opis po polsku (jak w dotychczasowej historii),
+  wg [Conventional Commits](https://www.conventionalcommits.org/pl/v1.0.0/):
+  `<typ>[(zakres)][!]: <opis>`, np. `feat(transactions): dodaj filtr po dacie`.
+  Typy: `feat` (nowa funkcjonalność), `fix` (poprawka błędu), `docs`
+  (dokumentacja), `refactor` (zmiana struktury bez zmiany zachowania), `test`,
+  `build`, `ci`, `chore`. Zakres w nawiasie jest opcjonalny (np. moduł albo
+  slice: `auth`, `transactions`). Zmiana łamiąca kompatybilność: `!` po
+  typie/zakresie (`feat!:`) albo stopka `BREAKING CHANGE: <opis>` w treści
+  commita.
 - **Warunki mergu** — na branchu, po rebase:
   - `pnpm lint` i `pnpm typecheck` przechodzą na zero błędów, `pnpm build` się
     buduje;
