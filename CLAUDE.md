@@ -2,7 +2,21 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Stan repozytorium
+## Przegląd projektu
+
+Expence Tracker to wieloużytkownikowa aplikacja webowa do śledzenia
+finansów osobistych: użytkownik zakłada konto, prowadzi własne kategorie i
+zapisuje transakcje (przychody i wydatki), a panel pokazuje listę z filtrami
+oraz podsumowanie przychodów, wydatków i salda za wybrany okres. Dane
+każdego użytkownika są od siebie odizolowane — to twardy wymóg, na którym
+opiera się cała autoryzacja (patrz "Architektura").
+
+Projekt powstaje w ramach kursu pracy z Claude Code, więc oprócz samej
+aplikacji ważne są czytelne granice modułów (CQRS w backendzie, FSD we
+frontendzie) i dokumentacja decyzji w tym pliku. Schemat bazy ma już model
+`Budget` (limity na kategorię i okres), ale nie ma jeszcze do niego API ani UI.
+
+### Stan repozytorium
 
 Zależności są zainstalowane, `.env` utworzony, klient Prismy wygenerowany,
 Postgres wstaje w kontenerze, `pnpm lint` i `pnpm typecheck` przechodzą na
@@ -32,7 +46,26 @@ i formularz kategorii (`(dashboard)/categories`) to wciąż gołe elementy HTML
 bez shadcn/ui, w starym płaskim układzie `components/`+`hooks/`+`lib/` (nowy
 nagłówek dostają już z layoutu). `/api/summary` nie ma jeszcze konsumenta w UI.
 
-## Bootstrap
+## Stos technologiczny
+
+Monorepo **pnpm** (workspaces, `pnpm@10`), Node `>=20.9`, **TypeScript 6**
+w trybie ESM we wszystkich pakietach.
+
+| Warstwa | Technologie |
+| --- | --- |
+| Frontend (`apps/frontend`, :3000) | Next.js 16 (App Router, Turbopack), React 19, Auth.js / `next-auth` 5 beta (Credentials, sesja JWT), TanStack Query 5, react-hook-form + `@hookform/resolvers`, Tailwind CSS 4, shadcn/ui (Radix UI, `lucide-react`) |
+| Backend (`apps/backend`, :3001) | Next.js 16 — wyłącznie route handlery `/api/*`, własna szyna CQRS, `jose` (JWT HS256) |
+| Baza danych (`packages/db`) | PostgreSQL 17 (Docker Compose), Prisma 7 (generator `prisma-client`, driver adapter `@prisma/adapter-pg`), seed przez `tsx` |
+| Kontrakt (`packages/types`) | Zod 4 — schematy współdzielone przez backend i formularze |
+| Auth (`packages/auth`) | hashowanie haseł (scrypt z `node:crypto`), podpis/weryfikacja tokenu API (`jose`) |
+| Narzędzia (`packages/config`) | wspólne `tsconfig` i ESLint 9 (`eslint-config-next`), Prettier 3 |
+
+Testów automatycznych na razie nie ma (patrz "Czego jeszcze nie ma"). Wersje,
+które celowo nie są `latest`, opisuje "Pułapki wersji".
+
+## Komendy
+
+### Bootstrap
 
 Na czystym klonie:
 
@@ -46,17 +79,25 @@ pnpm db:generate            # Prisma 7: migrate dev NIE generuje już klienta
 pnpm db:seed                # dev@expence.local + kategorie startowe
 ```
 
-## Komendy
+### Codzienna praca
 
 Wszystkie z korzenia repo:
 
 | Komenda | Efekt |
 | --- | --- |
 | `pnpm dev` | frontend :3000 i backend :3001 równolegle |
+| `./start-backend.sh` / `./start-frontend.sh` | jedna aplikacja w trybie dev; backendowy najpierw podnosi Postgresa i czeka na healthcheck |
+| `./stop-backend.sh` / `./stop-frontend.sh` | zatrzymanie serwera dev na jego porcie (odpowiednik Ctrl+C) |
 | `pnpm build` | `prisma generate`, potem build obu aplikacji |
 | `pnpm typecheck` / `pnpm lint` | we wszystkich pakietach naraz |
+| `pnpm format` / `format:check` | Prettier na całym repo (zapis / tylko sprawdzenie) |
 | `pnpm db:up` / `db:down` / `db:reset` | kontener Postgresa (`db:reset` kasuje wolumen) |
-| `pnpm db:migrate` / `db:seed` / `db:studio` | migracje, dane startowe, Prisma Studio |
+| `pnpm db:migrate` / `db:generate` | nowa migracja z `schema.prisma` / wygenerowanie klienta (po każdej migracji) |
+| `pnpm db:seed` / `db:studio` | dane startowe, Prisma Studio |
+
+Testy: brak runnera — nie ma komendy `pnpm test`. Do czasu jego dodania
+weryfikacją są `pnpm lint`, `pnpm typecheck`, `pnpm build` i ręczne
+sprawdzenie (curl niżej, przeglądarka).
 
 Pojedynczy pakiet: `pnpm --filter @expence/backend <skrypt>`. Nazwy: `@expence/frontend`, `@expence/backend`, `@expence/db`, `@expence/types`, `@expence/auth`, `@expence/config`.
 
