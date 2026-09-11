@@ -25,6 +25,8 @@ schemacie, ale nie ma API.
 | Metoda i ścieżka | Publiczny | Obsługa |
 | --- | --- | --- |
 | `GET /api/health` | tak | ping bazy — `{"status":"ok","database":"up"}` |
+| `GET /api/openapi.json` | tak | specyfikacja OpenAPI 3.1 z `src/openapi/document.ts` |
+| `GET /api/docs` | tak | Swagger UI (HTML, `swagger-ui-dist` z CDN) czytający `/api/openapi.json` |
 | `POST /api/auth/register` | tak | `RegisterCommand` (moduł `auth`) → `{ user, token, expiresAt }` |
 | `POST /api/auth/login` | tak | `LoginCommand` (moduł `auth`) → `{ user, token, expiresAt }` |
 | `GET /api/auth/me` | nie | profil zalogowanego użytkownika |
@@ -43,6 +45,7 @@ src/
 │   ├── auth-context.ts       requireUserId(), stała USER_ID_HEADER
 │   ├── http.ts               ok/created/noContent/fail, parseJsonBody/parseQuery
 │   └── jwt.ts                readBearerToken + re-eksport verifyAccessToken z @expence/auth
+├── openapi/                  spec OpenAPI: document.ts, responses.ts, <modul>.paths.ts
 └── server/
     ├── bus/                  szyna CQRS: bus.ts, message.ts (defineCommand/defineQuery), index.ts
     ├── modules/{user,auth,transaction}/
@@ -57,7 +60,8 @@ src/
 1. `OPTIONS` → 204 z nagłówkami CORS (preflight z przeglądarki na :3000).
    Dozwolone originy to `NEXT_PUBLIC_WEB_URL`, lista rozdzielana przecinkami.
 2. Ścieżka z `PUBLIC_PATHS` (`/api/health`, `/api/auth/login`,
-   `/api/auth/register`) → przepuszcza bez tokenu.
+   `/api/auth/register`, `/api/openapi.json`, `/api/docs`) → przepuszcza
+   bez tokenu.
 3. W pozostałych przypadkach weryfikuje Bearer (`verifyAccessToken`,
    `AUTH_SECRET`); bez poprawnego tokenu → 401 `UNAUTHORIZED`.
 4. Ustawia `x-user-id` = `sub` z tokenu. Nagłówek jest **zawsze nadpisywany**,
@@ -163,6 +167,8 @@ nigdy przez bezpośredni import cudzych plików — `auth.service.ts` nie widzi
    `src/server/bus/index.ts`.
 4. Schematy wejścia/wyjścia najpierw w `packages/types`, potem route handler.
 5. Tabela "Endpointy" w tym pliku i ewentualnie `PUBLIC_PATHS`.
+6. Opis endpointów w `src/openapi/<nazwa>.paths.ts`, podpięty w
+   `src/openapi/document.ts` (patrz "Dokumentacja OpenAPI").
 
 ### Moduł `transaction`
 
@@ -189,6 +195,33 @@ wprost z `src/app/api/categories/**`. `Transaction.categoryId` ma
 route na `409 CONFLICT`. Migracja kategorii na moduł CQRS to osobny branch
 (`refactor/`), nie zmiana przy okazji.
 
+## Dokumentacja OpenAPI (Swagger)
+
+Swagger UI: `http://localhost:3001/api/docs`, surowa spec:
+`/api/openapi.json`. Oba endpointy są publiczne (opisują kształt API, bez
+danych); "Try it out" wymaga tokenu z `POST /api/auth/login` wklejonego w
+"Authorize".
+
+Backend nie jest aplikacją NestJS — route handlery to eksportowane funkcje,
+a dekoratorów TS (`@ApiTags`, `@ApiOperation`, `@ApiResponse`) nie da się
+nałożyć na funkcję. Ich odpowiednikiem jest `zod-openapi`, który buduje spec
+ze schematów Zod z `@expence/types` — tych samych, którymi handlery walidują
+body i query, więc dokumentacja nie rozjeżdża się z walidacją:
+
+- `src/openapi/<modul>.paths.ts` — opis endpointów modułu: `tags`
+  (= `@ApiTags`), `operationId`/`summary`/`description` (= `@ApiOperation`),
+  `responses` z sukcesem i każdym błędem, który handler faktycznie zwraca
+  (= `@ApiResponse`). Obecnie tylko `transaction.paths.ts`.
+- `src/openapi/responses.ts` — wspólne odpowiedzi błędów w kształcie
+  `apiErrorSchema` (401 z `proxy.ts`, 400 z `parseJsonBody`/`parseQuery`).
+- `src/openapi/document.ts` — składa dokument: `info`, tagi, `bearerAuth`,
+  rejestr schematów w `components.schemas` (= DTO z `@ApiProperty`).
+
+Zmiana handlera (nowy status, nowy błąd domenowy, nowy endpoint) wymaga
+zmiany w `<modul>.paths.ts` w tym samym branchu. Nowy schemat DTO dopisuje
+się najpierw do `packages/types`, a do spec trafia przez import — nie
+przepisuje się go ręcznie w YAML-u ani JSON-ie.
+
 ## Sprawdzenie bez UI
 
 Backend musi działać (`./start-backend.sh` albo `pnpm dev`):
@@ -210,3 +243,7 @@ Izolację sprawdzasz dwoma tokenami: zasób utworzony tokenem A musi dawać
 `404` przy `PATCH`/`DELETE` tokenem B.
 
 Komendy tylko dla tej aplikacji: `pnpm --filter @expence/backend dev|build|lint|typecheck`.
+
+## Aktualizacja dokumentacji
+
+Po zmianie dowolnych metod, trzeba aktualizuj lub dodaj JSDoc. A dla dto i kontrolera dodaj dekoratory swagger

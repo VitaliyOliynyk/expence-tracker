@@ -69,7 +69,7 @@ w trybie ESM we wszystkich pakietach.
 | Warstwa | Technologie |
 | --- | --- |
 | Frontend (`apps/frontend`, :3000) | Next.js 16 (App Router, Turbopack), React 19, Auth.js / `next-auth` 5 beta (Credentials, sesja JWT), TanStack Query 5, react-hook-form + `@hookform/resolvers`, Tailwind CSS 4, shadcn/ui (Radix UI, `lucide-react`) |
-| Backend (`apps/backend`, :3001) | Next.js 16 — wyłącznie route handlery `/api/*`, własna szyna CQRS, `jose` (JWT HS256) |
+| Backend (`apps/backend`, :3001) | Next.js 16 — wyłącznie route handlery `/api/*`, własna szyna CQRS, `jose` (JWT HS256), `zod-openapi` (spec OpenAPI 3.1 ze schematów Zod, Swagger UI pod `/api/docs`) |
 | Baza danych (`packages/db`) | PostgreSQL 17 (Docker Compose), Prisma 7 (generator `prisma-client`, driver adapter `@prisma/adapter-pg`), seed przez `tsx` |
 | Kontrakt (`packages/types`) | Zod 4 — schematy współdzielone przez backend i formularze |
 | Auth (`packages/auth`) | hashowanie haseł (scrypt z `node:crypto`), podpis/weryfikacja tokenu API (`jose`) |
