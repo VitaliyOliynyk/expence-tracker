@@ -6,7 +6,14 @@ import { readBearerToken, verifyAccessToken } from "@/lib/jwt";
 // W Next 16 `middleware.ts` zostal przemianowany na `proxy.ts`.
 // Tu odbywa sie CORS i weryfikacja tokenu - handlery dostaja juz x-user-id.
 
-const PUBLIC_PATHS = ["/api/health", "/api/auth/login", "/api/auth/register"];
+// /api/docs i /api/openapi.json opisuja tylko ksztalt API, bez danych uzytkownikow.
+const PUBLIC_PATHS = [
+  "/api/health",
+  "/api/auth/login",
+  "/api/auth/register",
+  "/api/openapi.json",
+  "/api/docs",
+];
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
