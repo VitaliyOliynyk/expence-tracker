@@ -2,9 +2,13 @@
 
 import { useCallback, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { transactionTypeSchema, type TransactionType } from "@expence/types";
+import {
+  transactionListQuerySchema,
+  transactionTypeSchema,
+  type TransactionType,
+} from "@expence/types";
 import type { TransactionListParams } from "@/entities/transaction";
-import { endOfDayIso, startOfDayIso } from "@/lib/date";
+import { endOfDayIso, isDateInput, startOfDayIso } from "@/lib/date";
 
 export const TRANSACTIONS_PER_PAGE = 10;
 
@@ -20,26 +24,51 @@ export type TransactionFilterState = {
   page: number;
 };
 
+/** Data z URL albo undefined - nieaktualny lub recznie zmieniony link nie moze wywolac 400. */
+function parseDateParam(value: string | null): string | undefined {
+  return value && isDateInput(value) ? value : undefined;
+}
+
 function parseFilters(params: URLSearchParams): TransactionFilterState {
   const type = transactionTypeSchema.safeParse(params.get("type"));
+  // Ta sama regula co w backendzie (UUID) - wprost ze schematu kontraktu.
+  const categoryId = transactionListQuerySchema.shape.categoryId.safeParse(
+    params.get("categoryId") || undefined,
+  );
   const page = Number(params.get("page"));
 
   return {
     type: type.success ? type.data : undefined,
-    categoryId: params.get("categoryId") || undefined,
-    dateFrom: params.get("dateFrom") || undefined,
-    dateTo: params.get("dateTo") || undefined,
+    categoryId: categoryId.success ? categoryId.data : undefined,
+    dateFrom: parseDateParam(params.get("dateFrom")),
+    dateTo: parseDateParam(params.get("dateTo")),
     page: Number.isInteger(page) && page > 0 ? page : 1,
   };
 }
 
-/** Filtry z URL -> parametry API: dni z inputow zamieniamy na granice dnia w ISO. */
+/**
+ * "Od" pozniej niz "Do" - min/max inputow ogranicza tylko kalendarz, nie
+ * wpisywanie z klawiatury ani URL. Porownanie napisow YYYY-MM-DD wystarcza.
+ */
+export function isDateRangeInverted(filters: TransactionFilterState): boolean {
+  return Boolean(filters.dateFrom && filters.dateTo && filters.dateFrom > filters.dateTo);
+}
+
+/**
+ * Filtry z URL -> parametry API: dni z inputow zamieniamy na granice dnia w ISO.
+ * Odwrocony zakres zamieniamy miejscami, bo backend odrzuca go jako 400 -
+ * inputy zostaja bez zmian, filtry pokazuja o tym podpowiedz.
+ */
 export function toListParams(filters: TransactionFilterState): TransactionListParams {
+  const [dateFrom, dateTo] = isDateRangeInverted(filters)
+    ? [filters.dateTo, filters.dateFrom]
+    : [filters.dateFrom, filters.dateTo];
+
   return {
     type: filters.type,
     categoryId: filters.categoryId,
-    dateFrom: startOfDayIso(filters.dateFrom),
-    dateTo: endOfDayIso(filters.dateTo),
+    dateFrom: startOfDayIso(dateFrom),
+    dateTo: endOfDayIso(dateTo),
     page: filters.page,
     perPage: TRANSACTIONS_PER_PAGE,
   };

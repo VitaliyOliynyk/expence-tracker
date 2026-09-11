@@ -7,17 +7,27 @@
 function parseDateInput(value: string): Date | null {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   if (!match) return null;
-  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  // Konstruktor Date mapuje lata 0-99 na 1900-1999, setFullYear nie. Bez tego
+  // wpisywanie roku w kontrolowanym <input type="date"> ("0002" po pierwszej
+  // cyfrze) przeskakiwalo na 1902 i przerywalo pisanie.
+  const date = new Date(0);
+  date.setFullYear(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  date.setHours(0, 0, 0, 0);
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-function pad(value: number): string {
-  return String(value).padStart(2, "0");
+/** Czy wartosc to poprawna data w formacie <input type="date"> (YYYY-MM-DD). */
+export function isDateInput(value: string): boolean {
+  return parseDateInput(value) !== null;
 }
 
-/** Date -> "YYYY-MM-DD" w strefie lokalnej. */
+function pad(value: number, length = 2): string {
+  return String(value).padStart(length, "0");
+}
+
+/** Date -> "YYYY-MM-DD" w strefie lokalnej (rok zawsze 4 cyfry, jak wymaga input). */
 function toDateInput(date: Date): string {
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  return `${pad(date.getFullYear(), 4)}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
 export function todayDateInput(): string {
