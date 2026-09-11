@@ -132,8 +132,10 @@ Gałąź główna to **`master`** (nie `main`) i jest zawsze w stanie działają
 - **Jeden branch = jedna intencja.** Nie dorzucaj niezwiązanych zmian "przy
   okazji" — zauważony problem poza zakresem to osobny branch.
 - **Branch krótkożyciowy.** Przed mergem zaktualizuj go względem `master`
-  przez `git rebase master` (branche są lokalne i niewspółdzielone, więc
-  przepisanie historii jest bezpieczne).
+  przez `git fetch && git rebase origin/master`. Branche mają jednego autora,
+  więc przepisanie historii jest bezpieczne — jeśli branch był już
+  wypchnięty, po rebase wypychasz go przez `git push --force-with-lease`
+  (tylko własny branch, nigdy `master`).
 
   <important if="Trzeba napisać commit">
 - **Commity** małe i spójne, opis po polsku (jak w dotychczasowej historii),
@@ -155,15 +157,25 @@ Gałąź główna to **`master`** (nie `main`) i jest zawsze w stanie działają
   - jeśli feature zmienia to, co opisuje któryś CLAUDE.md (np. "Stan
     repozytorium", "Czego jeszcze nie ma" — w korzeniu albo w aplikacji),
     aktualizacja dokumentacji jest częścią brancha.
-- **Merge:** repo nie ma jeszcze remote'a ani `gh`, więc pull request
-  zastępuje lokalny `git switch master && git merge --no-ff <branch>` —
-  `--no-ff` zostawia w historii commit mergu, czyli widoczną granicę
-  feature'a. Po podpięciu remote'a na GitHubie: `git push -u origin <branch>`,
-  PR do `master`, merge po review; nigdy force-push na `master`.
-- **Po mergu** usuń branch: `git branch -d <branch>`.
+- **Remote:** `origin` to GitHub
+  (`git@github.com:VitaliyOliynyk/expence-tracker.git`, SSH), a `gh` jest
+  zalogowane — PR-y zakładasz i scalasz z terminala.
+- **Pull request:** `git push -u origin <branch>`, potem
+  `gh pr create --base master` (tytuł jak commit, wg Conventional Commits).
+  Otwarcie i każdy push do PR uruchamia workflow
+  `.github/workflows/claude-code-review.yml` — Claude recenzuje zmianę
+  (plugin `code-review`) i zostawia komentarze inline. Wzmianka `@claude` w
+  komentarzu do PR lub issue uruchamia `.github/workflows/claude.yml`.
+  Reguły recenzji: `apps/REVIEW.md`.
+- **Merge:** po review, commitem mergu —
+  `gh pr merge <nr> --merge --delete-branch` (odpowiednik
+  `git merge --no-ff`: w historii zostaje widoczna granica feature'a). Nie
+  używaj `--squash` ani `--rebase`. Nigdy force-push na `master`.
+- **Po mergu** zsynchronizuj lokalny `master` i usuń branch:
+  `git switch master && git pull && git branch -d <branch>`.
 - **Dla Claude:** przed rozpoczęciem zadania sprawdź `git branch --show-current`;
-  jeśli to `master`, najpierw utwórz branch wg reguł wyżej. Commit, merge i
-  push tylko na wyraźną prośbę użytkownika.
+  jeśli to `master`, najpierw utwórz branch wg reguł wyżej. Commit, push,
+  założenie PR i merge tylko na wyraźną prośbę użytkownika.
 
 ## Architektura
 
