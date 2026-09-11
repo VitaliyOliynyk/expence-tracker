@@ -12,6 +12,16 @@ import { TransactionCategoryNotFoundError } from "@/server/modules/transaction/t
 // W Next 15+ `params` jest asynchroniczne.
 type RouteContext = { params: Promise<{ id: string }> };
 
+// Opis OpenAPI tych endpointow: src/openapi/transaction.paths.ts - zmiana statusow wymaga zmiany tam.
+
+/**
+ * GET /api/transactions/{id} - pojedyncza transakcja zalogowanego uzytkownika.
+ *
+ * @param request - zadanie z naglowkiem `x-user-id`.
+ * @param context - kontekst trasy z asynchronicznym `params.id`.
+ * @returns 200 z `TransactionDto`, 404 gdy transakcji nie ma albo jest cudza, 401 bez `x-user-id` (w praktyce odcina to wczesniej proxy.ts).
+ * @throws Blad Prismy przy problemie z baza danych - handler go nie lapie, Next zwraca wtedy 500.
+ */
 export async function GET(request: Request, { params }: RouteContext) {
   const auth = requireUserId(request);
   if (auth.error) return auth.error;
@@ -21,6 +31,17 @@ export async function GET(request: Request, { params }: RouteContext) {
   return transaction ? ok(transaction) : fail("NOT_FOUND", "Nie znaleziono transakcji");
 }
 
+/**
+ * PATCH /api/transactions/{id} - czesciowa aktualizacja transakcji zalogowanego uzytkownika.
+ *
+ * Nie rzuca wyjatkow - kazdy blad zapisu tlumaczy na odpowiedz.
+ *
+ * @param request - zadanie z naglowkiem `x-user-id` i body `updateTransactionSchema`.
+ * @param context - kontekst trasy z asynchronicznym `params.id`.
+ * @returns 200 z `TransactionDto` po zmianie, 400 przy blednym body albo cudzej/nieistniejacej
+ *   kategorii, 404 gdy transakcji nie ma albo jest cudza, 401 bez `x-user-id` (w praktyce odcina to wczesniej proxy.ts),
+ *   500 `INTERNAL` przy innym bledzie zapisu.
+ */
 export async function PATCH(request: Request, { params }: RouteContext) {
   const auth = requireUserId(request);
   if (auth.error) return auth.error;
@@ -45,6 +66,14 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   }
 }
 
+/**
+ * DELETE /api/transactions/{id} - usuwa transakcje zalogowanego uzytkownika.
+ *
+ * @param request - zadanie z naglowkiem `x-user-id`.
+ * @param context - kontekst trasy z asynchronicznym `params.id`.
+ * @returns 204 bez ciala, 404 gdy transakcji nie ma albo jest cudza, 401 bez `x-user-id` (w praktyce odcina to wczesniej proxy.ts).
+ * @throws Blad Prismy przy problemie z baza danych - handler go nie lapie, Next zwraca wtedy 500.
+ */
 export async function DELETE(request: Request, { params }: RouteContext) {
   const auth = requireUserId(request);
   if (auth.error) return auth.error;

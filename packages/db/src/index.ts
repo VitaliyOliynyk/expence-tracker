@@ -1,7 +1,14 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "./generated/prisma/client";
 
-// Prisma 7 nie czyta juz URL-a ze schematu - polaczenie idzie przez driver adapter.
+/**
+ * Tworzy klienta Prismy polaczonego z Postgresem przez driver adapter.
+ * Prisma 7 nie czyta juz URL-a ze schematu - polaczenie idzie przez driver adapter.
+ * Samo utworzenie nie otwiera polaczenia - bledy sieci wyjda przy pierwszym zapytaniu.
+ *
+ * @returns Nowy `PrismaClient`; w trybie development loguje tez zapytania.
+ * @throws {Error} gdy brak zmiennej `DATABASE_URL` - leci juz przy imporcie `@expence/db`.
+ */
 function createPrismaClient(): PrismaClient {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
@@ -18,6 +25,7 @@ function createPrismaClient(): PrismaClient {
 // Bez tego cache'a co przeladowanie powstawalby nowy pool polaczen do Postgresa.
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
+/** Singleton klienta Prismy; w dev przezywa hot reload dzieki cache'owi na globalThis. */
 export const prisma: PrismaClient = globalForPrisma.prisma ?? createPrismaClient();
 
 if (process.env.NODE_ENV !== "production") {

@@ -13,6 +13,12 @@ import * as transactionRepository from "./transaction.repository";
 import { toTransactionDto } from "./transaction.mapper";
 import { TransactionCategoryNotFoundError } from "./transaction.errors";
 
+/**
+ * Logika biznesowa modulu transakcji. Wszystkie funkcje ponizej przepuszczaja
+ * bledy Prismy z repozytorium (np. `Prisma.PrismaClientKnownRequestError`) przy
+ * problemie z baza danych - route handler zamienia je na `500 INTERNAL`.
+ */
+
 // Klucz miesiaca ("YYYY-MM") liczymy w UTC, wiec etykieta tez musi byc w UTC -
 // inaczej serwer w strefie za UTC podpisalby "2026-09" jako sierpien.
 const MONTH_LABELS = new Intl.DateTimeFormat("pl-PL", {
@@ -21,14 +27,34 @@ const MONTH_LABELS = new Intl.DateTimeFormat("pl-PL", {
   timeZone: "UTC",
 });
 
-// Bez tego sprawdzenia uzytkownik moglby podpiac transakcje pod cudza kategorie
-// (FK sprawdza tylko istnienie kategorii, nie jej wlasciciela).
+/**
+ * Sprawdza, czy kategoria nalezy do uzytkownika.
+ * Bez tego sprawdzenia uzytkownik moglby podpiac transakcje pod cudza kategorie
+ * (FK sprawdza tylko istnienie kategorii, nie jej wlasciciela).
+ *
+ * @param userId - wlasciciel, ktorego kategorie sprawdzamy.
+ * @param categoryId - id kategorii wskazanej w transakcji.
+ * @returns Nic - konczy sie normalnie, gdy kategoria nalezy do uzytkownika.
+ * @throws {TransactionCategoryNotFoundError} gdy kategorii nie ma albo nalezy
+ *   do innego uzytkownika.
+ */
 async function assertCategoryOwned(userId: string, categoryId: string): Promise<void> {
   if (!(await transactionRepository.categoryBelongsToUser(userId, categoryId))) {
     throw new TransactionCategoryNotFoundError(categoryId);
   }
 }
 
+/**
+ * Zwraca jedna strone transakcji uzytkownika razem z licznikiem i sumami.
+ * Strona, licznik i sumy sa pobierane rownolegle.
+ *
+ * @param userId - wlasciciel transakcji.
+ * @param query - filtry (`dateFrom`, `dateTo`, `type`, `categoryId`) i stronicowanie
+ *   (`page`, `perPage`) po walidacji `transactionListQuerySchema`.
+ * @returns Strona `items`, `total` pasujacych rekordow i `totals`
+ *   (`incomeCents`/`expenseCents`) liczone z filtrami daty i kategorii, ale bez `type`.
+ * @throws Blad Prismy przy problemie z baza danych.
+ */
 export async function listTransactions(
   userId: string,
   query: TransactionListQuery,
@@ -48,11 +74,30 @@ export async function listTransactions(
   };
 }
 
+/**
+ * Pobiera pojedyncza transakcje uzytkownika.
+ *
+ * @param userId - wlasciciel transakcji.
+ * @param id - id transakcji.
+ * @returns DTO transakcji albo `null`, gdy jej nie ma albo nalezy do innego uzytkownika.
+ * @throws Blad Prismy przy problemie z baza danych.
+ */
 export async function getTransaction(userId: string, id: string): Promise<TransactionDto | null> {
   const transaction = await transactionRepository.findById(userId, id);
   return transaction ? toTransactionDto(transaction) : null;
 }
 
+/**
+ * Tworzy transakcje po sprawdzeniu, ze kategoria nalezy do uzytkownika.
+ *
+ * @param userId - wlasciciel nowej transakcji.
+ * @param input - dane po `createTransactionSchema`; `amount` jest juz w groszach.
+ * @returns Utworzona transakcja jako DTO (z dociagnieta kategoria).
+ * @throws {TransactionCategoryNotFoundError} gdy `input.categoryId` nie istnieje
+ *   albo nalezy do innego uzytkownika.
+ * @throws Blad Prismy przy problemie z baza danych, np. `P2003`, gdy kategoria
+ *   zniknie miedzy sprawdzeniem wlasnosci a zapisem.
+ */
 export async function createTransaction(
   userId: string,
   input: CreateTransactionInput,
@@ -71,6 +116,20 @@ export async function createTransaction(
   return toTransactionDto(transaction);
 }
 
+/**
+ * Czesciowo aktualizuje transakcje - zmienia tylko pola obecne w `input`.
+ * Zmiana kategorii jest sprawdzana pod katem wlasnosci przed zapisem.
+ *
+ * @param userId - wlasciciel transakcji.
+ * @param id - id aktualizowanej transakcji.
+ * @param input - dane po `updateTransactionSchema` (wszystkie pola opcjonalne,
+ *   `amount` juz w groszach, `description: null` czysci opis).
+ * @returns Transakcja po zmianie albo `null`, gdy transakcji nie ma albo nalezy
+ *   do innego uzytkownika.
+ * @throws {TransactionCategoryNotFoundError} gdy podany `input.categoryId` nie
+ *   istnieje albo nalezy do innego uzytkownika (sprawdzane przed wyszukaniem transakcji).
+ * @throws Blad Prismy przy problemie z baza danych.
+ */
 export async function updateTransaction(
   userId: string,
   id: string,
@@ -91,10 +150,27 @@ export async function updateTransaction(
   return getTransaction(userId, id);
 }
 
+/**
+ * Usuwa transakcje uzytkownika.
+ *
+ * @param userId - wlasciciel transakcji.
+ * @param id - id usuwanej transakcji.
+ * @returns `true` po usunieciu, `false` gdy transakcji nie ma albo nalezy do innego uzytkownika.
+ * @throws Blad Prismy przy problemie z baza danych.
+ */
 export async function deleteTransaction(userId: string, id: string): Promise<boolean> {
   return (await transactionRepository.deleteScoped(userId, id)) > 0;
 }
 
+/**
+ * Podsumowanie pogrupowane po kategorii, od najwiekszej sumy.
+ * Kategoria, ktorej nie udalo sie dociagnac, dostaje etykiete "Nieznana kategoria".
+ *
+ * @param userId - wlasciciel transakcji.
+ * @param query - `type` i zakres dat po walidacji `summaryQuerySchema`.
+ * @returns Koszyki z `key` = id kategorii, jej nazwa i kolorem, suma i liczba transakcji.
+ * @throws Blad Prismy przy problemie z baza danych.
+ */
 async function summarizeByCategory(userId: string, query: SummaryQuery): Promise<SummaryBucket[]> {
   const grouped = await transactionRepository.sumByCategory(userId, query);
   const categories = await transactionRepository.findCategoriesByIds(
@@ -114,8 +190,16 @@ async function summarizeByCategory(userId: string, query: SummaryQuery): Promise
     .sort((a, b) => b.totalCents - a.totalCents);
 }
 
-// Prisma nie grupuje po wyrazeniu na dacie, wiec agregujemy w pamieci.
-// Przy skali produkcyjnej podmien to na $queryRaw z date_trunc.
+/**
+ * Podsumowanie pogrupowane po miesiacu (UTC), chronologicznie.
+ * Prisma nie grupuje po wyrazeniu na dacie, wiec agregujemy w pamieci.
+ * Przy skali produkcyjnej podmien to na $queryRaw z date_trunc.
+ *
+ * @param userId - wlasciciel transakcji.
+ * @param query - `type` i zakres dat po walidacji `summaryQuerySchema`.
+ * @returns Koszyki z `key` = "YYYY-MM", etykieta typu "wrzesien 2026", suma i liczba transakcji.
+ * @throws Blad Prismy przy problemie z baza danych.
+ */
 async function summarizeByMonth(userId: string, query: SummaryQuery): Promise<SummaryBucket[]> {
   const rows = await transactionRepository.findAmountsByDate(userId, query);
 
@@ -137,6 +221,15 @@ async function summarizeByMonth(userId: string, query: SummaryQuery): Promise<Su
     }));
 }
 
+/**
+ * Podsumowanie transakcji jednego typu w zadanym okresie, pogrupowane wg `query.groupBy`.
+ *
+ * @param userId - wlasciciel transakcji.
+ * @param query - `type` (domyslnie `EXPENSE`), `groupBy` (`category` | `month`)
+ *   i opcjonalny zakres dat, po walidacji `summaryQuerySchema`.
+ * @returns Waluta domyslna, suma wszystkich koszykow i same koszyki.
+ * @throws Blad Prismy przy problemie z baza danych.
+ */
 export async function getSummary(userId: string, query: SummaryQuery): Promise<SummaryDto> {
   const buckets =
     query.groupBy === "category"
