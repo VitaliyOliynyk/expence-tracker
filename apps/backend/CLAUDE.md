@@ -139,10 +139,14 @@ nigdy przez bezpośredni import cudzych plików — `auth.service.ts` nie widzi
   `lastLoginAt`.
 - `src/server/bus/index.ts` to jedyne miejsce, które zna komplet handlerów
   wszystkich modułów (`registerUserHandlers`, `registerAuthHandlers`,
-  `registerTransactionHandlers`) i cache'uje instancję szyny na
-  `globalThis` — bez tego hot reload w dev rejestrowałby handlery po raz
-  drugi i wywalał serwer (ten sam zabieg co dla `prisma` w
-  `packages/db/src/index.ts`).
+  `registerTransactionHandlers`). Szyna celowo **nie** jest cache'owana na
+  `globalThis` (w przeciwieństwie do `prisma` w `packages/db/src/index.ts`,
+  gdzie cache chroni pulę połączeń): w dev przeżyłaby hot reload z
+  handlerami — a przez nie serwisami i klasami błędów — ze starej wersji
+  kodu, a wtedy `instanceof` w route handlerze przestaje rozpoznawać błędy
+  (np. cudza kategoria w `POST /api/transactions` dawała 500 zamiast 400).
+  Podwójnej rejestracji nie ma: `createAppBus()` zawsze zaczyna od pustej
+  szyny.
 - Serwisy przyjmują `dispatch` jako argument zamiast importować singleton
   z `bus/index.ts` — inaczej powstałby cykl importów (`bus/index.ts` →
   `auth.handlers.ts` → `auth.service.ts` → `bus/index.ts`).
