@@ -211,7 +211,10 @@ body i query, więc dokumentacja nie rozjeżdża się z walidacją:
 - `src/openapi/<modul>.paths.ts` — opis endpointów modułu: `tags`
   (= `@ApiTags`), `operationId`/`summary`/`description` (= `@ApiOperation`),
   `responses` z sukcesem i każdym błędem, który handler faktycznie zwraca
-  (= `@ApiResponse`). Obecnie tylko `transaction.paths.ts`.
+  (= `@ApiResponse`). Pliki: `auth.paths.ts`, `transaction.paths.ts`
+  (z `/api/summary`), `category.paths.ts`, `system.paths.ts` (health, spec
+  i Swagger UI). Endpointy publiczne z `PUBLIC_PATHS` mają `security: []`,
+  które nadpisuje globalne `bearerAuth`.
 - `src/openapi/responses.ts` — wspólne odpowiedzi błędów w kształcie
   `apiErrorSchema` (401 z `proxy.ts`, 400 z `parseJsonBody`/`parseQuery`).
 - `src/openapi/document.ts` — składa dokument: `info`, tagi, `bearerAuth`,
