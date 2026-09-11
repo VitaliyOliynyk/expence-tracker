@@ -14,6 +14,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { navigateWithFreshSession } from "@/lib/session-navigation";
 import { registerAction } from "../api/register-action";
 
 export function RegisterForm() {
@@ -24,7 +25,10 @@ export function RegisterForm() {
 
   const onSubmit = form.handleSubmit(async (values) => {
     const result = await registerAction(values);
-    if (!result) return;
+    if (!result) {
+      navigateWithFreshSession("/transactions");
+      return;
+    }
 
     if (result.code === "CONFLICT") {
       form.setError("email", { message: result.error });

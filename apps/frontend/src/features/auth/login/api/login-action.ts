@@ -1,6 +1,5 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { AuthError } from "next-auth";
 import { loginSchema, type LoginInput } from "@expence/types";
 import { signIn } from "@/auth";
@@ -8,9 +7,11 @@ import { signIn } from "@/auth";
 export type LoginActionResult = { error: string } | undefined;
 
 /**
- * `redirect: false` daje szanse zlapac AuthError przed przekierowaniem -
- * przy sukcesie przekierowujemy sami, zeby rozroznic zle dane logowania
- * od innych bledow (te ostatnie maja polecieć dalej jako wyjatek).
+ * `redirect: false` daje szanse zlapac AuthError i rozroznic zle dane
+ * logowania od innych bledow (te ostatnie maja poleciec dalej jako wyjatek).
+ * Przy sukcesie przekierowuje klient twardym przeladowaniem - patrz
+ * lib/session-navigation.ts; redirect() stad zostawilby w karcie dane
+ * poprzedniego uzytkownika.
  */
 export async function loginAction(input: LoginInput): Promise<LoginActionResult> {
   const parsed = loginSchema.safeParse(input);
@@ -24,6 +25,4 @@ export async function loginAction(input: LoginInput): Promise<LoginActionResult>
     }
     throw error;
   }
-
-  redirect("/categories");
 }

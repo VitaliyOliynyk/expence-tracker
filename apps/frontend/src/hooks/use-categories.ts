@@ -40,8 +40,9 @@ export function useUpdateCategory(id: string) {
       }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.categories.all });
-      // SummaryBucket zagniezdza dane kategorii (nazwa/kolor) - trzeba odswiezyc
-      // tez cache podsumowania.
+      // TransactionDto i SummaryBucket zagniezdzaja dane kategorii (nazwa/kolor) -
+      // trzeba odswiezyc tez cache transakcji i podsumowania.
+      void queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all });
       void queryClient.invalidateQueries({ queryKey: queryKeys.summary.all });
     },
   });
@@ -54,6 +55,7 @@ export function useDeleteCategory() {
     mutationFn: (id: string) => apiFetch<void>(`/api/categories/${id}`, { method: "DELETE" }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.categories.all });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all });
       void queryClient.invalidateQueries({ queryKey: queryKeys.summary.all });
     },
   });

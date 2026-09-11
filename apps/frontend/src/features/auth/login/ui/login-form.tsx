@@ -14,6 +14,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { navigateWithFreshSession } from "@/lib/session-navigation";
 import { loginAction } from "../api/login-action";
 
 export function LoginForm() {
@@ -24,7 +25,11 @@ export function LoginForm() {
 
   const onSubmit = form.handleSubmit(async (values) => {
     const result = await loginAction(values);
-    if (result?.error) {
+    if (!result) {
+      navigateWithFreshSession("/transactions");
+      return;
+    }
+    if (result.error) {
       form.setError("root", { message: result.error });
     }
   });

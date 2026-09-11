@@ -6,13 +6,20 @@ import {
   type SummaryQuery,
   type TransactionDto,
   type TransactionListQuery,
+  type TransactionListResponse,
   type UpdateTransactionInput,
 } from "@expence/types";
 import * as transactionRepository from "./transaction.repository";
 import { toTransactionDto } from "./transaction.mapper";
 import { TransactionCategoryNotFoundError } from "./transaction.errors";
 
-const MONTH_LABELS = new Intl.DateTimeFormat("pl-PL", { month: "long", year: "numeric" });
+// Klucz miesiaca ("YYYY-MM") liczymy w UTC, wiec etykieta tez musi byc w UTC -
+// inaczej serwer w strefie za UTC podpisalby "2026-09" jako sierpien.
+const MONTH_LABELS = new Intl.DateTimeFormat("pl-PL", {
+  month: "long",
+  year: "numeric",
+  timeZone: "UTC",
+});
 
 // Bez tego sprawdzenia uzytkownik moglby podpiac transakcje pod cudza kategorie
 // (FK sprawdza tylko istnienie kategorii, nie jej wlasciciela).
@@ -25,9 +32,20 @@ async function assertCategoryOwned(userId: string, categoryId: string): Promise<
 export async function listTransactions(
   userId: string,
   query: TransactionListQuery,
-): Promise<TransactionDto[]> {
-  const transactions = await transactionRepository.findMany(userId, query);
-  return transactions.map(toTransactionDto);
+): Promise<TransactionListResponse> {
+  const [transactions, total, sums] = await Promise.all([
+    transactionRepository.findPage(userId, query),
+    transactionRepository.count(userId, query),
+    transactionRepository.sumByType(userId, query),
+  ]);
+
+  return {
+    items: transactions.map(toTransactionDto),
+    page: query.page,
+    perPage: query.perPage,
+    total,
+    totals: { incomeCents: sums.INCOME, expenseCents: sums.EXPENSE },
+  };
 }
 
 export async function getTransaction(userId: string, id: string): Promise<TransactionDto | null> {

@@ -32,15 +32,37 @@ function summaryWhere(userId: string, query: SummaryQuery): Prisma.TransactionWh
   return { userId, type: query.type, ...dateWhere(query.dateFrom, query.dateTo) };
 }
 
-export function findMany(
+/** Jedna strona listy; `id` na koncu sortowania daje stabilna kolejnosc miedzy stronami. */
+export function findPage(
   userId: string,
   query: TransactionListQuery,
 ): Promise<TransactionWithCategory[]> {
   return prisma.transaction.findMany({
     where: listWhere(userId, query),
     include: { category: true },
-    orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+    orderBy: [{ date: "desc" }, { createdAt: "desc" }, { id: "desc" }],
+    skip: (query.page - 1) * query.perPage,
+    take: query.perPage,
   });
+}
+
+export function count(userId: string, query: TransactionListQuery): Promise<number> {
+  return prisma.transaction.count({ where: listWhere(userId, query) });
+}
+
+/** Sumy per typ dla tych samych filtrow co lista, ale z pominieciem filtra `type`. */
+export async function sumByType(
+  userId: string,
+  query: TransactionListQuery,
+): Promise<Record<TransactionType, number>> {
+  const rows = await prisma.transaction.groupBy({
+    by: ["type"],
+    where: listWhere(userId, { ...query, type: undefined }),
+    _sum: { amountCents: true },
+  });
+  const sums: Record<TransactionType, number> = { INCOME: 0, EXPENSE: 0 };
+  for (const row of rows) sums[row.type] = row._sum.amountCents ?? 0;
+  return sums;
 }
 
 export function findById(userId: string, id: string): Promise<TransactionWithCategory | null> {

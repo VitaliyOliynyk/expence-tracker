@@ -20,10 +20,17 @@ Server Actions wołające `signIn`/`registerRequest`) i zweryfikowane w
 przeglądarce end-to-end: rejestracja, walidacja klienta, logowanie,
 błędne hasło, wylogowanie. Zobacz "Frontend: Feature-Sliced Design" niżej.
 
-**Czego jeszcze nie ma:** runnera testów (ani Vitest, ani Playwright) i UI
-ponad `/sign-in`/`/sign-up` — nie ma jeszcze widoku transakcji, a lista i
-formularz kategorii (`(dashboard)/categories`) to wciąż gołe elementy HTML
-bez shadcn/ui, w starym płaskim układzie `components/`+`hooks/`+`lib/`.
+Strona główna to `/transactions` (tam kierują `/`, logowanie i rejestracja):
+lista transakcji stronicowana po 10, filtry typu/kategorii/zakresu dat
+trzymane w URL, karty Przychody/Wydatki/Saldo, dodawanie i edycja w dialogu,
+usuwanie z potwierdzeniem. Layout panelu ma nagłówek z menu sekcji
+(Transakcje, Kategorie) i menu profilu (inicjały, imię, e-mail, wylogowanie).
+Całość w FSD i shadcn/ui.
+
+**Czego jeszcze nie ma:** runnera testów (ani Vitest, ani Playwright). Lista
+i formularz kategorii (`(dashboard)/categories`) to wciąż gołe elementy HTML
+bez shadcn/ui, w starym płaskim układzie `components/`+`hooks/`+`lib/` (nowy
+nagłówek dostają już z layoutu). `/api/summary` nie ma jeszcze konsumenta w UI.
 
 ## Bootstrap
 
@@ -151,6 +158,7 @@ Konsekwencje przy zmianach:
 - Serwisy zawężają **każde** zapytanie do `userId`. Modyfikacje idą przez `updateMany`/`deleteMany` z `where: { id, userId }` — nie przez `update`/`delete` po samym `id`, bo te nie odsieją cudzego rekordu. Wyjątek: repozytorium modułu użytkownika modyfikuje `User` przez `update({ where: { id } })` — tu `id` **jest** samym rekordem właściciela (nie ma osobnego pola `userId`), więc nie ma czego dodatkowo zawężać.
 - Nowy publiczny endpoint trzeba dopisać do `PUBLIC_PATHS` w `apps/backend/src/proxy.ts`, inaczej proxy odetnie go na 401. `/api/auth/login` i `/api/auth/register` już tam są; `/api/auth/me` celowo nie.
 - **Hasła nigdy nie hashuj poza `@expence/auth`.** `hashPassword`/`verifyPassword` (scrypt, `node:crypto`) mieszkają tam jednym miejscem — konsumenci to moduł użytkownika w backendzie i `packages/db/prisma/seed.ts`. Frontend nie ma już własnej kopii.
+- **Każda zmiana tożsamości w karcie kończy się pełnym przeładowaniem strony** — logowanie, rejestracja i wylogowanie. Server Actions (`loginAction`, `registerAction`, `logoutAction`) **nie** robią `redirect()`; po sukcesie formularz/menu woła `navigateWithFreshSession()` z `apps/frontend/src/lib/session-navigation.ts`. Token API z `api-client.ts` i cache TanStack Query żyją w pamięci karty — nawigacja klienta zostawiłaby je kolejnemu użytkownikowi: widziałby cudze dane, a jego zapisy trafiałyby na poprzednie konto (odtworzone: A traci sesję w innej karcie, proxy odsyła kartę A na `/sign-in` bez przeładowania, loguje się tam B).
 
 ### Moduł użytkownika i autoryzacji (CQRS)
 
@@ -183,7 +191,12 @@ plików — `auth.service.ts` nie widzi `user.repository.ts` ani Prismy.
   przez `dispatch(JakasQuery({ ... }))`.
 - `transaction` (`/api/transactions`, model `Transaction` z typem
   `INCOME`/`EXPENSE`) to trzeci moduł na szynie (zastąpił wczesny model `Expense`); obsługuje
-  też `/api/summary` przez `GetTransactionSummaryQuery`. Jedyny wyjątek od
+  też `/api/summary` przez `GetTransactionSummaryQuery`. Lista
+  (`GET /api/transactions`) jest stronicowana — `page`, `perPage` (domyślnie
+  10, max 100) — i zwraca `{ items, page, perPage, total, totals }`;
+  `totals` (`incomeCents`/`expenseCents`) liczy się z filtrami daty i
+  kategorii, ale **bez** filtra `type`, żeby karty podsumowania zawsze
+  pokazywały obie strony. Jedyny wyjątek od
   reguły "tylko przez szynę": `transaction.repository.ts` sprawdza
   własność kategorii (`categoryBelongsToUser`) i dociąga ich nazwy do
   podsumowania (`findCategoriesByIds`) bezpośrednio przez
@@ -201,7 +214,8 @@ Nowy kod frontendu — od modułu logowania/rejestracji wzwyż — powstaje wg
 płaskiego układu `components/`+`hooks/`+`lib/`. To migracja **częściowa i
 celowa**: `categories` (komponenty w `components/`, hooki w
 `hooks/`) zostaje w starym układzie do osobnej migracji — nie przenoś ich
-przy okazji innej zmiany.
+przy okazji innej zmiany. Nowe slice'y korzystają z niego jak z `shared`
+(np. `useCategories` z `hooks/use-categories.ts` w selectach transakcji).
 
 Warstwy w `apps/frontend/src/`:
 
@@ -210,13 +224,21 @@ Warstwy w `apps/frontend/src/`:
   złożenie widgetu i feature'a), zero logiki biznesowej. Next wymusza tu
   fizyczną lokalizację (routing), więc to jedyna warstwa, której nie da
   się przenieść pod osobny katalog.
-- **`widgets/`** — złożenia używane przez więcej niż jedną stronę, np.
+- **`widgets/`** — samodzielne bloki strony składane z feature'ów i encji, np.
   `widgets/auth-card` (ramka `Card` + nagłówek + link zamienny współdzielony
-  przez `/sign-in` i `/sign-up`).
+  przez `/sign-in` i `/sign-up`), `widgets/app-header` (logo, menu sekcji,
+  menu profilu — w `(dashboard)/layout.tsx`), `widgets/transactions-summary`
+  i `widgets/transactions-table` (tabela, paginacja, akcje wiersza).
 - **`features/<domena>/<akcja>/`** — jedna intencja użytkownika, np.
-  `features/auth/login`, `features/auth/register`. Segmenty w środku:
-  `ui/` (komponent kliencki z react-hook-form) i `api/` (Server Action,
-  `"use server"`). Publiczne API slice'a to wyłącznie `index.ts` w jego
+  `features/auth/login`, `features/auth/register`, `features/auth/logout`,
+  `features/transaction/upsert` (dodanie/edycja w jednym dialogu),
+  `features/transaction/delete`, `features/transaction/filter`. Segmenty w
+  środku: `ui/` (komponent kliencki, formularze przez react-hook-form),
+  `api/` (Server Action `"use server"` albo mutacja TanStack Query) i
+  `model/` (stan, np. `useTransactionFilters` — filtry i strona w URL,
+  czytane niezależnie przez filtry, podsumowanie i tabelę; strona
+  `/transactions` owija je w `<Suspense>`, bo `useSearchParams` tego
+  wymaga). Publiczne API slice'a to wyłącznie `index.ts` w jego
   korzeniu — import spoza slice'a idzie przez `@/features/auth/login`,
   nigdy przez `@/features/auth/login/ui/login-form` bezpośrednio. To ten
   sam pomysł co `*.messages.ts` w modułach backendu (patrz wyżej): jeden
@@ -224,8 +246,14 @@ Warstwy w `apps/frontend/src/`:
 - **`shared`** na razie **nie jest osobnym katalogiem** — tę rolę pełnią
   już istniejące `components/ui` (prymitywy shadcn/ui spięte przez
   `components.json`) i `lib/*` (m.in. `cn`, `auth-api.ts`, `api-client.ts`,
-  `query-keys.ts`). Nie duplikuj ich pod nowym `shared/`, dopóki nie
-  ruszy pełna migracja reszty aplikacji.
+  `query-keys.ts`, `date.ts` — konwersje `<input type="date">` ↔ ISO;
+  dzień transakcji zapisujemy jako południe czasu lokalnego, żeby strefa
+  nie przerzuciła go na sąsiedni dzień). Nie duplikuj ich pod nowym
+  `shared/`, dopóki nie ruszy pełna migracja reszty aplikacji.
+- **`entities/transaction`** — to, co o transakcji wie każda warstwa wyżej:
+  zapytanie listy (`useTransactions`), `TransactionAmount` (znak i kolor z
+  `type`), etykiety typów. Mutacje nie należą do encji — to intencje
+  użytkownika, więc siedzą w `features/transaction/*`.
 - Brak osobnej warstwy `entities` dla auth: sesja/`UserDto` to już
   współdzielony kontrakt z `@expence/types`, a jej infrastruktura
   (`next-auth`) siedzi w `apps/frontend/src/auth.ts` — dokładanie
@@ -233,13 +261,14 @@ Warstwy w `apps/frontend/src/`:
   abstrakcją.
 
 Gdy `categories` przejdzie na FSD, dostanie własne katalogi w
-`entities/`/`features/` analogicznie do `features/auth/*`.
+`entities/`/`features/` analogicznie do `entities/transaction` i
+`features/transaction/*`.
 
 ### `packages/types` to kontrakt, nie zbiór interfejsów
 
 Schematy Zod są jedynym źródłem prawdy o kształcie danych i regułach walidacji. Ten sam schemat działa w trzech miejscach: `parseJsonBody`/`parseQuery` w backendzie, `standardSchemaResolver` w formularzach react-hook-form i typowanie odpowiedzi w `api-client.ts`. Zmiana reguły walidacji **zawsze** zaczyna się tutaj — dopisanie jej osobno w handlerze albo w formularzu tworzy drugą, rozjeżdżającą się definicję.
 
-Uwaga na `createTransactionSchema`: kwota idzie przez `amountInputSchema` z transformacją (tekst "12,50" → 1250 groszy), więc typ wejściowy różni się od wyjściowego. `CreateTransactionFormValues` (`z.input`) trzyma react-hook-form, `CreateTransactionInput` (`z.infer`) dostaje backend — stąd trzyparametrowy generyk w `useForm`.
+Uwaga na `createTransactionSchema`: kwota idzie przez `amountInputSchema` z transformacją (tekst "12,50" → 1250 groszy), więc typ wejściowy różni się od wyjściowego. `CreateTransactionFormValues` (`z.input`) trzyma react-hook-form, `CreateTransactionInput` (`z.infer`) wychodzi z resolvera — stąd trzyparametrowy generyk w `useForm`. **W body do API idzie `z.input`** (surowe `form.getValues()`), bo backend sam przepuszcza body przez ten schemat w `parseJsonBody`; wysłanie wyniku walidacji (już w groszach) pomnożyłoby kwotę przez 100 drugi raz.
 
 ### Pieniądze
 

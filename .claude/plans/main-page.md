@@ -63,33 +63,33 @@ Commit/merge tylko na wyraźną prośbę użytkownika.
 
 ### Etap 2 — `feature/main-page`
 
-- [ ] 12. Branch `feature/main-page` odbity od wyniku etapu 1.
-- [ ] 13. Kontrakt: `transactionListQuerySchema` += `page` (domyślnie 1), `perPage` (1–100,
+- [x] 12. Branch `feature/main-page` odbity od wyniku etapu 1.
+- [x] 13. Kontrakt: `transactionListQuerySchema` += `page` (domyślnie 1), `perPage` (1–100,
       domyślnie 10); nowy `transactionListResponseSchema`
       `{ items, page, perPage, total, totals: { incomeCents, expenseCents } }`.
-- [ ] 14. Backend: repository `findMany` ze `skip`/`take`, `count`, `sumByType` (groupBy po `type`);
+- [x] 14. Backend: repository `findMany` ze `skip`/`take`, `count`, `sumByType` (groupBy po `type`);
       **sumy z filtrami daty i kategorii, bez filtra `type`**; service/messages zwracają
       `TransactionListResponse`.
-- [ ] 15. shadcn: `dialog alert-dialog select table dropdown-menu avatar badge skeleton`;
+- [x] 15. shadcn: `dialog alert-dialog select table dropdown-menu avatar badge skeleton`;
       po dodaniu `from "cn"` → `from "@/lib/utils"`, usunąć pakiet `cn`, `pnpm typecheck`.
-- [ ] 16. `lib/date.ts` (konwersje input date ↔ ISO, początek/koniec dnia),
+- [x] 16. `lib/date.ts` (konwersje input date ↔ ISO, początek/koniec dnia),
       `lib/query-keys.ts` += `transactions: { all, list(query) }`.
-- [ ] 17. `entities/transaction`: `useTransactions` (keepPreviousData), `TransactionAmount`.
-- [ ] 18. `features/transaction/upsert`: mutacje create/update + `TransactionFormDialog`
+- [x] 17. `entities/transaction`: `useTransactions` (keepPreviousData), `TransactionAmount`.
+- [x] 18. `features/transaction/upsert`: mutacje create/update + `TransactionFormDialog`
       (RHF, `createTransactionSchema`, trzyparametrowy `useForm`, błędy pól z `ApiRequestError.fields`).
-- [ ] 19. `features/transaction/delete`: mutacja + przycisk z `AlertDialog`.
-- [ ] 20. `features/transaction/filter`: stan w URL (type, categoryId, dateFrom, dateTo, page),
+- [x] 19. `features/transaction/delete`: mutacja + przycisk z `AlertDialog`.
+- [x] 20. `features/transaction/filter`: stan w URL (type, categoryId, dateFrom, dateTo, page),
       zmiana filtra resetuje stronę; UI filtrów (Select z sentinelem `all`).
-- [ ] 21. `features/auth/logout`: Server Action `signOut` + pozycja menu.
-- [ ] 22. Widgety: `transactions-summary` (Przychody/Wydatki/Saldo), `transactions-table`
+- [x] 21. `features/auth/logout`: Server Action `signOut` + pozycja menu.
+- [x] 22. Widgety: `transactions-summary` (Przychody/Wydatki/Saldo), `transactions-table`
       (tabela, skeleton, pusty stan, paginacja „Strona X z Y”, cofnięcie strony po usunięciu
       ostatniego wiersza), `app-header` (logo, nawigacja z aktywnym linkiem, menu profilu).
-- [ ] 23. Strony: `(dashboard)/transactions/page.tsx` (kompozycja w `<Suspense>`),
+- [x] 23. Strony: `(dashboard)/transactions/page.tsx` (kompozycja w `<Suspense>`),
       `(dashboard)/layout.tsx` z `AppHeader`; przekierowania → `/transactions`;
       `proxy.ts` matcher += `/transactions/:path*`; `use-categories.ts` invaliduje `transactions.all`.
-- [ ] 24. Dokumentacja: `CLAUDE.md` (stan repo, czego nie ma, FSD — nowe slice'y, `lib/date.ts`,
+- [x] 24. Dokumentacja: `CLAUDE.md` (stan repo, czego nie ma, FSD — nowe slice'y, `lib/date.ts`,
       kształt listy transakcji).
-- [ ] 25. Weryfikacja: `pnpm lint`, `pnpm typecheck`, `pnpm build`; curl
+- [x] 25. Weryfikacja: `pnpm lint`, `pnpm typecheck`, `pnpm build`; curl
       `/api/transactions?page=2&perPage=10` (10 elementów, `total`, `totals`), `?type=INCOME`
       nie zmienia `totals`, `perPage=500` → 400; przeglądarka: logowanie → `/transactions`,
       paginacja, filtry w URL (przetrwają odświeżenie), dodanie/edycja/usunięcie odświeża listę
@@ -101,3 +101,28 @@ Commit/merge tylko na wyraźną prośbę użytkownika.
 Komentarze i komunikaty w kodzie po polsku bez diakrytyków; importy spoza slice'a FSD tylko
 przez `index.ts`; kategorie do Selectów przez istniejący `useCategories` (stary układ pełni rolę
 `shared` — bez migracji kategorii na FSD).
+
+## Wynik weryfikacji (2026-09-11)
+
+- `pnpm lint`, `pnpm typecheck`, `pnpm build` — zero błędów.
+- curl: strona 1 i 3 po 10 elementów, strona 4 pusta, strony się nie nakładają; `?type=INCOME`
+  daje 3 elementy przy niezmienionych `totals`; `perPage=500` → 400; błędy pól po polsku;
+  nowy użytkownik widzi `total: 0`.
+- Przeglądarka (Playwright, Chromium headless): logowanie → `/transactions`, paginacja, filtr w URL
+  (reset strony, przetrwa reload), walidacja klienta, dodanie „12,50” zapisuje 12,50 zł, edycja,
+  usunięcie z potwierdzeniem, `?page=9` → ostatnia strona, nawigacja do `/categories`, menu profilu
+  i wylogowanie. W konsoli tylko 404 `favicon.ico` (brak ikony — stan sprzed zmiany) i przerwany
+  `GET /api/auth/session` przy twardym przeładowaniu po wylogowaniu.
+
+## Poprawki po code review (2026-09-11)
+
+Każda odtworzona przed poprawką i sprawdzona po niej (`repro.cjs` + pełny e2e jako regresja):
+
+1. **[średni, bezpieczeństwo] Zmiana konta w tej samej karcie** — `redirect()` z `loginAction`/`registerAction`
+   to nawigacja klienta, więc token API i cache TanStack Query poprzedniego użytkownika zostawały w pamięci.
+   Odtworzone: B po rejestracji widział dane A, a jego transakcja zapisała się na koncie A. Poprawka: akcje
+   nie przekierowują, klient woła `navigateWithFreshSession()` (`lib/session-navigation.ts`, twarde
+   przeładowanie) — wspólne dla logowania, rejestracji i wylogowania.
+2. **[niski] Karty podsumowania w wiecznym ładowaniu przy błędzie listy** — teraz pokazują „—”.
+3. **[niski] Etykiety miesięcy `/api/summary` w strefie serwera** — `Intl.DateTimeFormat` z `timeZone: "UTC"`,
+   zgodnie z kluczem `YYYY-MM` liczonym w UTC (sprawdzone z backendem na `TZ=America/New_York`).
