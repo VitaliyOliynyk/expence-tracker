@@ -1,21 +1,30 @@
 import {
   apiErrorSchema,
+  authResponseSchema,
   categoryDtoSchema,
+  createCategorySchema,
   createTransactionSchema,
+  loginSchema,
+  registerSchema,
   summaryBucketSchema,
   summaryDtoSchema,
   transactionDtoSchema,
   transactionListResponseSchema,
   transactionTotalsSchema,
+  updateCategorySchema,
   updateTransactionSchema,
+  userDtoSchema,
 } from "@expence/types";
 import { createDocument } from "zod-openapi";
+import { AUTH_TAG, authPaths } from "./auth.paths";
+import { CATEGORIES_TAG, categoryPaths } from "./category.paths";
+import { SYSTEM_TAG, systemPaths } from "./system.paths";
 import { SUMMARY_TAG, TRANSACTIONS_TAG, transactionPaths } from "./transaction.paths";
 
 /**
  * Specyfikacja OpenAPI 3.1 backendu, budowana ze schematow Zod z `@expence/types` -
  * tych samych, ktorymi route handlery waliduja body i query, wiec dokumentacja nie
- * rozjedzie sie z walidacja. Na razie obejmuje modul transaction.
+ * rozjedzie sie z walidacja. Obejmuje wszystkie route handlery z `src/app/api`.
  */
 
 type OpenApiDocument = ReturnType<typeof createDocument>;
@@ -42,11 +51,15 @@ export function getOpenApiDocument(): OpenApiDocument {
           "`POST /api/auth/login`. Kwoty sa liczbami calkowitymi w groszach.",
       },
       tags: [
+        { name: AUTH_TAG, description: "Rejestracja, logowanie (token dostepu) i profil" },
         { name: TRANSACTIONS_TAG, description: "Przychody i wydatki zalogowanego uzytkownika" },
         { name: SUMMARY_TAG, description: "Podsumowania transakcji po kategorii albo miesiacu" },
+        { name: CATEGORIES_TAG, description: "Kategorie transakcji zalogowanego uzytkownika" },
+        { name: SYSTEM_TAG, description: "Healthcheck i sama dokumentacja API" },
       ],
+      // Domyslnie kazdy endpoint wymaga tokenu; publiczne nadpisuja to przez `security: []`.
       security: [{ bearerAuth: [] }],
-      paths: transactionPaths,
+      paths: { ...authPaths, ...transactionPaths, ...categoryPaths, ...systemPaths },
       components: {
         securitySchemes: {
           bearerAuth: {
@@ -58,7 +71,13 @@ export function getOpenApiDocument(): OpenApiDocument {
         },
         schemas: {
           ApiError: apiErrorSchema,
+          UserDto: userDtoSchema,
+          AuthResponse: authResponseSchema,
+          RegisterInput: registerSchema,
+          LoginInput: loginSchema,
           CategoryDto: categoryDtoSchema,
+          CreateCategoryInput: createCategorySchema,
+          UpdateCategoryInput: updateCategorySchema,
           TransactionDto: transactionDtoSchema,
           TransactionTotals: transactionTotalsSchema,
           TransactionListResponse: transactionListResponseSchema,
