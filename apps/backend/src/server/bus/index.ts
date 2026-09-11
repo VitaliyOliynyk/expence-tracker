@@ -19,17 +19,16 @@ function createAppBus(): Bus {
   return bus;
 }
 
-// Hot reload w Next.js przeladowuje moduly przy kazdej zmianie pliku - bez cache'a
-// na globalThis kazde przeladowanie probowaloby zarejestrowac handlery po raz drugi.
-// Ten sam zabieg co dla `prisma` w packages/db/src/index.ts.
-const globalForBus = globalThis as unknown as { bus?: Bus };
+// Szyna celowo NIE jest cache'owana na globalThis (w przeciwienstwie do `prisma`).
+// Hot reload w dev wykonuje ten modul ponownie po zmianie dowolnego pliku modulow;
+// szyna z globalThis trzymalaby wtedy handlery - a przez nie serwisy i klasy bledow -
+// ze starej wersji kodu. `instanceof` w route handlerze porownywalby z nowa klasa i nie
+// rozpoznawal bledu (TransactionCategoryNotFoundError konczyl sie 500 zamiast 400).
+// Podwojnej rejestracji nie ma: `createAppBus` za kazdym razem zaczyna od pustej szyny.
+// Prisma zostaje na globalThis, bo tam cache chroni pule polaczen, a nie kod.
 
-/** Singleton szyny aplikacji; w dev przezywa hot reload dzieki cache'owi na globalThis. */
-export const bus: Bus = globalForBus.bus ?? createAppBus();
-
-if (process.env.NODE_ENV !== "production") {
-  globalForBus.bus = bus;
-}
+/** Singleton szyny aplikacji; w dev odtwarzany z aktualnym kodem po kazdym hot reloadzie. */
+export const bus: Bus = createAppBus();
 
 /**
  * Wysyla wiadomosc na szyne aplikacji - punkt wejscia dla route handlerow.
