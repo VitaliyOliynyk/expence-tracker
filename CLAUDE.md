@@ -21,6 +21,14 @@ katalogu. Zmiana, która dotyka obu aplikacji (np. nowy endpoint i jego
 konsument w UI), wymaga przeczytania obu. Reguła, która obowiązuje w więcej
 niż jednym miejscu, trafia tutaj, nie do pliku aplikacji.
 
+### Pamięć Claude
+
+Wspomnienia Claude o tym projekcie (feedback, decyzje, kontekst) mieszkają w
+repo, w `.claude/memory/` — nie w `~/.claude` ani globalnie. Jeden fakt to
+jeden plik, a indeks poniżej ładuje się w każdej sesji:
+
+@.claude/memory/MEMORY.md
+
 ## Przegląd projektu
 
 Expence Tracker to wieloużytkownikowa aplikacja webowa do śledzenia

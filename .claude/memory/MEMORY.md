@@ -1,0 +1,1 @@
+- [Pamięć tylko w projekcie](project-scoped-memory.md) — wspomnienia o Expence Tracker zapisuj w repo w `.claude/memory/`, nigdy globalnie ani w `~/.claude`
