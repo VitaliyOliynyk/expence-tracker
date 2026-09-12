@@ -15,6 +15,11 @@ Szczegóły konkretnej aplikacji mieszkają obok jej kodu:
 - **`apps/frontend/CLAUDE.md`** — UI i sesja: Auth.js, mennica tokenów
   `/api/token`, `api-client.ts`, Feature-Sliced Design, TanStack Query,
   shadcn/ui i Tailwind 4.
+- **`.claude/docs/`** — dokumentacja referencyjna (nie ładuje się sama,
+  czytaj w razie potrzeby): `architecture.md` (warstwy, moduły, wzorce),
+  `api.md` (wszystkie endpointy), `database.md` (schemat i przypisanie pól
+  do DTO), `dev-guide.md` (jak dodać moduł, funkcję, migrację). Reguły
+  pozostają w plikach `CLAUDE.md` — przy rozjeździe wygrywają one i kod.
 
 Claude Code dociąga plik podrzędny dopiero przy pracy na plikach z danego
 katalogu. Zmiana, która dotyka obu aplikacji (np. nowy endpoint i jego
