@@ -6,7 +6,9 @@ import { z } from "zod";
  * Konwersja na jednostki glowne (PLN) nastepuje wylacznie na granicy UI.
  */
 export const CURRENCIES = ["PLN", "EUR", "USD", "GBP"] as const;
-export const currencySchema = z.enum(CURRENCIES);
+export const currencySchema = z
+  .enum(CURRENCIES)
+  .meta({ description: "Kod waluty (ISO 4217)", example: "PLN" });
 export type Currency = z.infer<typeof currencySchema>;
 
 export const DEFAULT_CURRENCY: Currency = "PLN";
@@ -15,7 +17,8 @@ export const DEFAULT_CURRENCY: Currency = "PLN";
 export const amountCentsSchema = z
   .int()
   .positive("Kwota musi byc wieksza od zera")
-  .max(1_000_000_000, "Kwota poza dopuszczalnym zakresem");
+  .max(1_000_000_000, "Kwota poza dopuszczalnym zakresem")
+  .meta({ description: "Kwota w groszach (liczba calkowita > 0)", example: 12750 });
 
 /**
  * Wejscie z formularza: uzytkownik wpisuje "12,50" albo 12.5, my zapisujemy 1250.
@@ -33,7 +36,13 @@ export const amountInputSchema = z
     }
     return Math.round(parsed * 100);
   })
-  .pipe(amountCentsSchema);
+  .pipe(amountCentsSchema)
+  .meta({
+    description:
+      'Kwota w zlotych: liczba (`12.5`) albo tekst z przecinkiem lub kropka (`"12,50"`); ' +
+      "zapisywana w groszach, wynik > 0 i <= 1 000 000 000 groszy",
+    example: "127,50",
+  });
 
 export function centsToUnits(cents: number): number {
   return cents / 100;

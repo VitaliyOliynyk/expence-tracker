@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { ZodOpenApiPathsObject } from "zod-openapi";
+import { unhandledErrorResponse } from "./responses";
 
 /**
  * Opis publicznych endpointow technicznych: `/api/health`, `/api/openapi.json`
@@ -61,6 +62,8 @@ export const systemPaths: ZodOpenApiPathsObject = {
           description: "Dokument OpenAPI 3.1",
           content: { "application/json": {} },
         },
+        // Handler nie lapie bledu budowy spec (np. schemat Zod bez reprezentacji w JSON Schema).
+        "500": unhandledErrorResponse,
       },
     },
   },
