@@ -218,7 +218,18 @@ body i query, więc dokumentacja nie rozjeżdża się z walidacją:
 - `src/openapi/responses.ts` — wspólne odpowiedzi błędów w kształcie
   `apiErrorSchema` (401 z `proxy.ts`, 400 z `parseJsonBody`/`parseQuery`).
 - `src/openapi/document.ts` — składa dokument: `info`, tagi, `bearerAuth`,
-  rejestr schematów w `components.schemas` (= DTO z `@ApiProperty`).
+  rejestr schematów w `components.schemas` (nazwy komponentów DTO).
+- `packages/types/src/*.ts` — opisy i przykłady pól DTO, body i parametrów
+  query (= `@ApiProperty`) jako `.meta({ description, example })` na polach
+  schematów Zod. Bez `id` w `.meta()` — `id` wypycha schemat do
+  `components.schemas` pod własną nazwą. Nie nakładaj `.meta()` na pole
+  wskazujące zarejestrowany DTO (np. `category: categoryDtoSchema`):
+  `.meta()` tworzy nową instancję schematu, więc zamiast `$ref` cały DTO
+  trafiłby do spec inline.
+
+Każdy route handler ma JSDoc (`METODA /sciezka - opis`, `@param`, `@returns`
+ze wszystkimi statusami, `@throws` albo "Nie rzuca wyjatkow") i linię
+wskazującą jego `<modul>.paths.ts` — wzorzec: `src/app/api/transactions/route.ts`.
 
 Zmiana handlera (nowy status, nowy błąd domenowy, nowy endpoint) wymaga
 zmiany w `<modul>.paths.ts` w tym samym branchu. Nowy schemat DTO dopisuje
