@@ -20,6 +20,8 @@ Szczegóły konkretnej aplikacji mieszkają obok jej kodu:
   `api.md` (wszystkie endpointy), `database.md` (schemat i przypisanie pól
   do DTO), `dev-guide.md` (jak dodać moduł, funkcję, migrację). Reguły
   pozostają w plikach `CLAUDE.md` — przy rozjeździe wygrywają one i kod.
+- **`.claude/skills/`** — skille projektu: `commit` (format i procedura
+  commita).
 
 Claude Code dociąga plik podrzędny dopiero przy pracy na plikach z danego
 katalogu. Zmiana, która dotyka obu aplikacji (np. nowy endpoint i jego
@@ -141,19 +143,10 @@ Gałąź główna to **`master`** (nie `main`) i jest zawsze w stanie działają
   więc przepisanie historii jest bezpieczne — jeśli branch był już
   wypchnięty, po rebase wypychasz go przez `git push --force-with-lease`
   (tylko własny branch, nigdy `master`).
-
-  <important if="Trzeba napisać commit">
-- **Commity** małe i spójne, opis po polsku (jak w dotychczasowej historii),
-  wg [Conventional Commits](https://www.conventionalcommits.org/pl/v1.0.0/):
-  `<typ>[(zakres)][!]: <opis>`, np. `feat(transactions): dodaj filtr po dacie`.
-  Typy: `feat` (nowa funkcjonalność), `fix` (poprawka błędu), `docs`
-  (dokumentacja), `refactor` (zmiana struktury bez zmiany zachowania), `test`,
-  `build`, `ci`, `chore`. Zakres w nawiasie jest opcjonalny (np. moduł albo
-  slice: `auth`, `transactions`). Zmiana łamiąca kompatybilność: `!` po
-  typie/zakresie (`feat!:`) albo stopka `BREAKING CHANGE: <opis>` w treści
-  commita.
-  </important>
-
+- **Commity:** reguły (Conventional Commits po polsku, typy, zakresy,
+  stopki) i procedura są w skillu `commit`
+  (`.claude/skills/commit/SKILL.md`, `/commit`) — korzystaj z niego przy
+  każdym commicie.
 - **Warunki mergu** — na branchu, po rebase:
   - `pnpm lint` i `pnpm typecheck` przechodzą na zero błędów, `pnpm build` się
     buduje;
@@ -166,7 +159,7 @@ Gałąź główna to **`master`** (nie `main`) i jest zawsze w stanie działają
   (`git@github.com:VitaliyOliynyk/expence-tracker.git`, SSH), a `gh` jest
   zalogowane — PR-y zakładasz i scalasz z terminala.
 - **Pull request:** `git push -u origin <branch>`, potem
-  `gh pr create --base master` (tytuł jak commit, wg Conventional Commits).
+  `gh pr create --base master` (tytuł jak commit — format w skillu `commit`).
   Otwarcie i każdy push do PR uruchamia workflow
   `.github/workflows/claude-code-review.yml` — Claude recenzuje zmianę
   (plugin `code-review`) i zostawia komentarze inline. Wzmianka `@claude` w
