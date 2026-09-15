@@ -2,7 +2,11 @@
 name: commit
 description: Tworzy commit na bieżącym branchu Expence Tracker wg reguł repo — Conventional Commits po polsku, bez diakrytyków, małe spójne commity, nigdy na master. Używaj, gdy użytkownik prosi o commit ("zacommituj", "zrób commit", /commit) albo gdy trzeba napisać lub ocenić wiadomość commita.
 argument-hint: "[opcjonalna wskazówka: typ, zakres albo opis]"
-allowed-tools: Bash(git status *) Bash(git diff *) Bash(git log *) Bash(git branch *) Bash(git switch *) Bash(git add *) Bash(git commit *) Bash(git show *)
+allowed-tools:
+  - Read
+  - Grep
+  - Bash(git *)
+  - Bash(pnpm *)
 model: sonnet
 ---
 
