@@ -5,8 +5,17 @@ argument-hint: "[opcjonalna wskazówka: typ, zakres albo opis]"
 allowed-tools:
   - Read
   - Grep
-  - Bash(git *)
-  - Bash(pnpm *)
+  - Bash(git status *)
+  - Bash(git diff *)
+  - Bash(git log *)
+  - Bash(git show *)
+  - Bash(git branch *)
+  - Bash(git switch *)
+  - Bash(git add *)
+  - Bash(git restore --staged *)
+  - Bash(git commit *)
+  - Bash(pnpm lint)
+  - Bash(pnpm typecheck)
 model: sonnet
 ---
 
