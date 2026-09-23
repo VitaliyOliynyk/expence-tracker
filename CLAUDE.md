@@ -161,7 +161,7 @@ Gałąź główna to **`master`** (nie `main`) i jest zawsze w stanie działają
 - **Pull request:** `git push -u origin <branch>`, potem
   `gh pr create --base master` (tytuł jak commit — format w skillu `commit`).
   Całą procedurę (sprawdzenie brancha i warunków mergu, push, opis) robi
-  skill `pr` (`.claude/skills/pr/SKILL.md`, `/pr <tytuł> <branch>`).
+  skill `pr` (`.claude/skills/pr/SKILL.md`, `/pr "<tytuł>" [branch docelowy]`).
   Otwarcie i każdy push do PR uruchamia workflow
   `.github/workflows/claude-code-review.yml` — Claude recenzuje zmianę
   (plugin `code-review`) i zostawia komentarze inline. Wzmianka `@claude` w
