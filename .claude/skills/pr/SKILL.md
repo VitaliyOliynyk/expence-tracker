@@ -1,7 +1,7 @@
 ---
 name: pr
-description: Zakłada pull request na GitHubie dla brancha Expence Tracker — sprawdza warunki z GitHub flow, wypycha branch i robi `gh pr create --base master` z podanym tytułem. Używaj, gdy użytkownik prosi o PR ("załóż PR", "otwórz pull request", /pr).
-argument-hint: "<tytuł PR> <branch>"
+description: Zakłada pull request na GitHubie z bieżącego brancha Expence Tracker — odmawia na `master`, sprawdza warunki z GitHub flow, wypycha branch, jeśli nie ma go na remote, i robi `gh pr create` z podanym tytułem do podanego brancha docelowego (domyślnie `master`). Używaj, gdy użytkownik prosi o PR ("załóż PR", "otwórz pull request", /pr).
+argument-hint: '"<tytuł PR>" [branch docelowy=master]'
 allowed-tools:
   - Read
   - Grep
@@ -9,12 +9,11 @@ allowed-tools:
   - Bash(git diff *)
   - Bash(git log *)
   - Bash(git branch *)
-  - Bash(git switch *)
   - Bash(git fetch *)
   - Bash(git rev-list *)
   - Bash(git rev-parse *)
   - Bash(git ls-remote *)
-  - Bash(git rebase origin/master)
+  - Bash(git rebase origin/*)
   - Bash(git push -u origin *)
   - Bash(git push --force-with-lease *)
   - Bash(gh pr list *)
@@ -33,30 +32,53 @@ skilla nią jest. Merge to osobny krok (`gh pr merge <nr> --merge
 --delete-branch`, patrz "Praca z branchami" w głównym `CLAUDE.md`) i
 wymaga osobnej prośby — ten skill go nie robi.
 
-Argumenty od użytkownika: $ARGUMENTS
+Argumenty od użytkownika (surowo): $ARGUMENTS
+
+- Pierwszy argument (tytuł PR): $0
+- Drugi argument (branch docelowy): $1
 
 ## Stan repo w chwili wywołania
 
 - Bieżący branch: !`git branch --show-current`
 - Status: !`git status --short`
-- Lokalne branche: !`git branch --format='%(refname:short)'`
 
-## 1. Rozbierz argumenty
+## 1. Bieżący branch nie może być `master`
 
-Oczekiwana postać: `<tytuł PR> <branch>`, np.
-`/pr feat(transactions): dodaj filtr po dacie feature/date-filter`.
+PR zawsze idzie **z bieżącego brancha** (`--head`). Jeśli bieżący branch
+(wyżej) to `master` albo jest pusty (detached HEAD) — **zgłoś błąd i
+zakończ**, niczego dalej nie rób (żadnego switcha, pusha, `gh`):
 
-- **Branch** to token bez spacji w postaci `<typ>/<opis>`, gdzie typ to
-  `feature`, `fix`, `refactor`, `docs` albo `chore` — zwykle ostatni.
-  Przyjmij go także, gdy użytkownik podał go jako pierwszy.
-- **Tytuł** to cała reszta, bez otaczających cudzysłowów.
-- **Brak brancha** — weź bieżący, o ile nie jest to `master`.
+> Błąd: jesteś na `master` — PR musi wyjść z osobnego brancha
+> (`git switch -c <typ>/<opis>`, patrz "Praca z branchami" w `CLAUDE.md`).
+
+Nazwa bieżącego brancha niezgodna z `<typ>/<opis-kebab-case>` (typy:
+`feature`, `fix`, `refactor`, `docs`, `chore`) — powiedz o tym, ale nie
+zmieniaj nazwy bez zgody.
+
+## 2. Rozbierz argumenty
+
+Postać: `/pr "<tytuł PR>" [branch docelowy]`, np.
+`/pr "feat(transactions): dodaj filtr po dacie"` albo
+`/pr "fix: popraw saldo" release/1.0`.
+
+- **Tytuł** — pierwszy argument (`$0`), bez otaczających cudzysłowów.
+- **Branch docelowy** (`--base`) — drugi argument (`$1`); pusty → `master`.
+- **Tytuł bez cudzysłowów** (`$0` to tylko pierwsze słowo, np. `feat:`) —
+  rozbierz surowe `$ARGUMENTS`: ostatni token jest branchem docelowym
+  tylko wtedy, gdy taki branch istnieje na remote
+  (`git ls-remote --exit-code --heads origin <token>`); inaczej całość to
+  tytuł, a docelowy to `master`.
+- **Branch docelowy musi istnieć na remote**
+  (`git ls-remote --exit-code --heads origin <docelowy>`) i być różny od
+  bieżącego. Inaczej — zgłoś błąd i zakończ.
 - **Brak tytułu** — zaproponuj go na podstawie commitów brancha
-  (`git log origin/master..<branch> --format='%s'`): przy jednym commicie
+  (`git log origin/<docelowy>..HEAD --format='%s'`): przy jednym commicie
   jego tytuł, przy kilku — jedno zdanie o całej intencji brancha. Pokaż
   propozycję i poczekaj na akceptację.
 
-## 2. Sprawdź tytuł
+Dalej `<branch>` = bieżący branch, `<docelowy>` = branch docelowy.
+
+## 3. Sprawdź tytuł
 
 Tytuł PR ma format commita ze skilla `commit`
 (`.claude/skills/commit/SKILL.md`): Conventional Commits, po polsku,
@@ -68,32 +90,27 @@ Tytuł niezgodny z formatem (brak typu, diakrytyki, kropka, wielka litera)
 powinien pasować do typu brancha (`feature/` → `feat`, `fix/` → `fix`,
 `docs/` → `docs`, `refactor/` → `refactor`, `chore/` → `chore`/`build`/`ci`).
 
-## 3. Sprawdź branch
+## 4. Sprawdź branch
 
 Każdy punkt, który nie przechodzi, zatrzymuje procedurę — zgłoś go
 użytkownikowi, zamiast obchodzić.
 
-1. **Nie `master`.** PR z `master` do `master` nie ma sensu, a na `master`
-   nie powinno być własnych commitów.
-2. **Branch istnieje lokalnie** (`git rev-parse --verify <branch>`). Nazwa
-   niezgodna z `<typ>/<opis-kebab-case>` — powiedz o tym, ale nie zmieniaj
-   nazwy bez zgody.
-3. **Brak otwartego PR-a** z tego brancha:
-   `gh pr list --head <branch> --state open --json number,url`. Istnieje —
-   podaj jego URL i zakończ (każdy push i tak trafia do tego PR-a).
-4. **Czyste drzewo robocze.** Niezacommitowane zmiany nie wejdą do PR-a —
+1. **Brak otwartego PR-a** z tego brancha:
+   `gh pr list --head <branch> --state open --json number,url,baseRefName`.
+   Istnieje — podaj jego URL i zakończ (każdy push i tak trafia do tego
+   PR-a).
+2. **Czyste drzewo robocze.** Niezacommitowane zmiany nie wejdą do PR-a —
    zapytaj, czy najpierw zrobić commit (`/commit`), czy iść dalej bez nich.
-5. **Przełącz się** na branch (`git switch <branch>`), jeśli nie jest
-   bieżący — weryfikacja niżej działa na drzewie roboczym.
-6. **Są commity do scalenia:** `git fetch origin`, potem
-   `git log origin/master..<branch> --format='%h %s'`. Pusto — nie ma czego
-   proponować.
-7. **Aktualność względem `master`:**
-   `git rev-list --count <branch>..origin/master`. Wynik > 0 — branch jest
-   w tyle. Zaproponuj `git rebase origin/master`; rób go tylko za zgodą.
-   Konflikt — zatrzymaj się i pokaż pliki, nie rozwiązuj go na ślepo.
+3. **Są commity do scalenia:** `git fetch origin`, potem
+   `git log origin/<docelowy>..<branch> --format='%h %s'`. Pusto — nie ma
+   czego proponować.
+4. **Aktualność względem brancha docelowego:**
+   `git rev-list --count <branch>..origin/<docelowy>`. Wynik > 0 — branch
+   jest w tyle. Zaproponuj `git rebase origin/<docelowy>`; rób go tylko za
+   zgodą. Konflikt — zatrzymaj się i pokaż pliki, nie rozwiązuj go na
+   ślepo.
 
-## 4. Warunki mergu
+## 5. Warunki mergu
 
 Wg "Praca z branchami" w głównym `CLAUDE.md` — sprawdź przed
 założeniem PR-a, bo recenzja i tak je zweryfikuje:
@@ -103,21 +120,34 @@ założeniem PR-a, bo recenzja i tak je zweryfikuje:
   PR-a bez zgody użytkownika. Sama dokumentacja/konfiguracja Claude — pomiń
   i napisz o tym w opisie.
 - **Schemat bazy:** zmiana `packages/db/prisma/schema.prisma` w
-  `git diff origin/master...<branch> --stat` bez nowego katalogu w
+  `git diff origin/<docelowy>...<branch> --stat` bez nowego katalogu w
   `packages/db/prisma/migrations/` — zatrzymaj się.
 - **Dokumentacja:** jeśli branch zmienia to, co opisuje któryś `CLAUDE.md`
   ("Stan repozytorium", "Czego jeszcze nie ma", mapa dokumentacji), a diff
   go nie dotyka — zwróć uwagę użytkownikowi.
 
-## 5. Push i PR
+## 6. Branch na remote
 
-1. **Push:** `git push -u origin <branch>`. Jeśli branch był już wypchnięty
-   i przeszedł rebase, push zostanie odrzucony — wtedy
+`gh pr create` potrzebuje brancha na `origin` z aktualnymi commitami.
+
+1. **Czy branch jest na remote:**
+   `git ls-remote --exit-code --heads origin <branch>`.
+   - Kod wyjścia 2 (brak) — **wypchnij**: `git push -u origin <branch>`.
+   - Jest — porównaj: `git rev-list --count origin/<branch>..<branch>`
+     (lokalne commity, których nie ma na remote). Wynik > 0 — wypchnij
+     `git push -u origin <branch>`. Wynik 0 — push niepotrzebny.
+2. **Push odrzucony** (branch przeszedł rebase po wcześniejszym pushu) —
    `git push --force-with-lease origin <branch>`, **tylko** dla własnego
    brancha, nigdy `master`.
-2. **Opis** — z commitów i diffu całego brancha
-   (`git diff origin/master...<branch>`), nie tylko ostatniego commita. Po
-   polsku, w stylu dotychczasowych PR-ów (bez diakrytyków, jak tytuł):
+3. Po pushu sprawdź ponownie punkt 1 — branch musi być na remote, zanim
+   pójdziesz dalej.
+
+## 7. Założenie PR-a
+
+1. **Opis** — z commitów i diffu całego brancha
+   (`git diff origin/<docelowy>...<branch>`), nie tylko ostatniego
+   commita. Po polsku, w stylu dotychczasowych PR-ów (bez diakrytyków,
+   jak tytuł):
 
    ```markdown
    ## Podsumowanie
@@ -139,10 +169,11 @@ założeniem PR-a, bo recenzja i tak je zweryfikuje:
    Na końcu stopka atrybucji PR-a, jeśli harness ją podaje — dokładnie w
    tej postaci, bez wymyślania własnej.
 
-3. **Założenie** przez HEREDOC:
+2. **Założenie** przez `gh`, tytuł = pierwszy argument, base = drugi
+   argument (domyślnie `master`), opis przez HEREDOC:
 
    ```bash
-   gh pr create --base master --head <branch> --title "<tytuł>" \
+   gh pr create --base <docelowy> --head <branch> --title "<tytuł>" \
      --body "$(cat <<'EOF'
    ## Podsumowanie
    ...
@@ -150,9 +181,9 @@ założeniem PR-a, bo recenzja i tak je zweryfikuje:
    )"
    ```
 
-## 6. Raport
+## 8. Raport
 
-Podaj użytkownikowi URL PR-a (z wyniku `gh pr create`) i jednym zdaniem
-przypomnij, że workflow `claude-code-review.yml` właśnie ruszył z
-recenzją, a merge (`gh pr merge <nr> --merge --delete-branch`) zrobisz na
-osobną prośbę.
+Podaj użytkownikowi URL PR-a (z wyniku `gh pr create`) i branch docelowy,
+a jednym zdaniem przypomnij, że workflow `claude-code-review.yml` właśnie
+ruszył z recenzją, a merge (`gh pr merge <nr> --merge --delete-branch`)
+zrobisz na osobną prośbę.
