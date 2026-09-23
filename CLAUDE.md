@@ -21,7 +21,7 @@ Szczegóły konkretnej aplikacji mieszkają obok jej kodu:
   do DTO), `dev-guide.md` (jak dodać moduł, funkcję, migrację). Reguły
   pozostają w plikach `CLAUDE.md` — przy rozjeździe wygrywają one i kod.
 - **`.claude/skills/`** — skille projektu: `commit` (format i procedura
-  commita).
+  commita), `pr` (założenie pull requesta z tytułem i branchem).
 
 Claude Code dociąga plik podrzędny dopiero przy pracy na plikach z danego
 katalogu. Zmiana, która dotyka obu aplikacji (np. nowy endpoint i jego
@@ -160,6 +160,8 @@ Gałąź główna to **`master`** (nie `main`) i jest zawsze w stanie działają
   zalogowane — PR-y zakładasz i scalasz z terminala.
 - **Pull request:** `git push -u origin <branch>`, potem
   `gh pr create --base master` (tytuł jak commit — format w skillu `commit`).
+  Całą procedurę (sprawdzenie brancha i warunków mergu, push, opis) robi
+  skill `pr` (`.claude/skills/pr/SKILL.md`, `/pr <tytuł> <branch>`).
   Otwarcie i każdy push do PR uruchamia workflow
   `.github/workflows/claude-code-review.yml` — Claude recenzuje zmianę
   (plugin `code-review`) i zostawia komentarze inline. Wzmianka `@claude` w
