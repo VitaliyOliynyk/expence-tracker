@@ -19,8 +19,9 @@ pnpm db:up && pnpm dev                        # Postgres + frontend :3000 + back
 - Komentarze i komunikaty w kodzie: po polsku, **bez znaków diakrytycznych**.
 - Importy: w aplikacjach przez `@/*` bez rozszerzeń; w `packages/*` ścieżki
   względne **bez** rozszerzenia (`./money`, nie `./money.js` — Turbopack).
-- Testów automatycznych nie ma. Weryfikacja: `pnpm lint`, `pnpm typecheck`,
-  `pnpm build` + ręcznie (curl, przeglądarka, Swagger UI).
+- Testy jednostkowe (Vitest) są tylko w `apps/backend` — `pnpm test`, nowy
+  test przez `/test <plik>`. Poza nimi weryfikacja: `pnpm lint`,
+  `pnpm typecheck`, `pnpm build` + ręcznie (curl, przeglądarka, Swagger UI).
 
 ### Gdzie należy zmiana?
 

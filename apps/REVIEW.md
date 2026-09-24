@@ -183,7 +183,8 @@ Nie zgłaszaj formatowania — to robi Prettier (`pnpm format:check`).
 - [ ] Jeśli zmiana zmienia to, co opisuje któryś CLAUDE.md ("Stan
       repozytorium", "Czego jeszcze nie ma", tabele endpointów i tras),
       aktualizacja jest w tym samym branchu.
-- [ ] Brak runnera testów — opis zmiany mówi, jak ją sprawdzono (curl wg
+- [ ] Zmiana w backendzie przechodzi `pnpm test`. Poza testami (frontend,
+      pakiety) opis zmiany mówi, jak ją sprawdzono (curl wg
       `apps/backend/CLAUDE.md`, przeglądarka na :3000 z kontem
       `dev@expence.local`). Zmiana dotykająca izolacji danych: sprawdzenie
       dwoma tokenami (zasób A → `404` dla B).

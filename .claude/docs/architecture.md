@@ -328,8 +328,9 @@ schematem.
 - **`/api/summary` nie ma konsumenta w UI** — `hooks/use-summary.ts`
   istnieje, ale karty podsumowania czytają `totals` z listy transakcji.
 - **`Budget`** ma model w bazie, ale nie ma API ani UI.
-- **Brak runnera testów** — weryfikacja to `pnpm lint`, `pnpm typecheck`,
-  `pnpm build` i ręczne sprawdzenie (curl, przeglądarka).
+- **Testy tylko w backendzie** — Vitest w `apps/backend` (`pnpm test`);
+  frontend i pakiety weryfikuje `pnpm lint`, `pnpm typecheck`, `pnpm build`
+  i ręczne sprawdzenie (curl, przeglądarka). Brak testów E2E.
 - **Grupowanie podsumowania po miesiącu** liczone w pamięci (Prisma nie
   grupuje po wyrażeniu na dacie) — przy dużej skali do zamiany na
   `$queryRaw` z `date_trunc`.

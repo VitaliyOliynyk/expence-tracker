@@ -21,7 +21,8 @@ Szczegóły konkretnej aplikacji mieszkają obok jej kodu:
   do DTO), `dev-guide.md` (jak dodać moduł, funkcję, migrację). Reguły
   pozostają w plikach `CLAUDE.md` — przy rozjeździe wygrywają one i kod.
 - **`.claude/skills/`** — skille projektu: `commit` (format i procedura
-  commita), `pr` (założenie pull requesta z tytułem i branchem).
+  commita), `pr` (założenie pull requesta z tytułem i branchem), `test`
+  (test Vitest dla pliku podanego w argumencie).
 
 Claude Code dociąga plik podrzędny dopiero przy pracy na plikach z danego
 katalogu. Zmiana, która dotyka obu aplikacji (np. nowy endpoint i jego
@@ -64,9 +65,10 @@ Backend (auth, transakcje, podsumowanie, kategorie) i frontend (logowanie,
 rejestracja, strona `/transactions`) są zaimplementowane i zweryfikowane
 end-to-end. Szczegółowy stan każdej aplikacji opisuje jej własny CLAUDE.md.
 
-**Czego jeszcze nie ma (w całym repo):** runnera testów (ani Vitest, ani
-Playwright) oraz API i UI dla `Budget`. Braki konkretnej aplikacji są
-wypisane w jej CLAUDE.md.
+**Czego jeszcze nie ma (w całym repo):** testów poza backendem (Vitest jest
+skonfigurowany tylko w `apps/backend`; brak testów frontendu, pakietów i
+E2E — Playwrighta) oraz API i UI dla `Budget`. Braki konkretnej aplikacji
+są wypisane w jej CLAUDE.md.
 
 ## Stos technologiczny
 
@@ -82,7 +84,8 @@ w trybie ESM we wszystkich pakietach.
 | Auth (`packages/auth`) | hashowanie haseł (scrypt z `node:crypto`), podpis/weryfikacja tokenu API (`jose`) |
 | Narzędzia (`packages/config`) | wspólne `tsconfig` i ESLint 9 (`eslint-config-next`), Prettier 3 |
 
-Testów automatycznych na razie nie ma (patrz "Czego jeszcze nie ma"). Wersje,
+Testy jednostkowe: Vitest, na razie tylko w `apps/backend` (patrz "Czego
+jeszcze nie ma"). Wersje,
 które celowo nie są `latest`, opisuje "Pułapki wersji".
 
 ## Komendy
@@ -112,14 +115,19 @@ Wszystkie z korzenia repo:
 | `./stop-backend.sh` / `./stop-frontend.sh` | zatrzymanie serwera dev na jego porcie (odpowiednik Ctrl+C) |
 | `pnpm build` | `prisma generate`, potem build obu aplikacji |
 | `pnpm typecheck` / `pnpm lint` | we wszystkich pakietach naraz |
+| `pnpm test` | testy Vitest we wszystkich pakietach, które mają skrypt `test` (na razie `@expence/backend`) |
 | `pnpm format` / `format:check` | Prettier na całym repo (zapis / tylko sprawdzenie) |
 | `pnpm db:up` / `db:down` / `db:reset` | kontener Postgresa (`db:reset` kasuje wolumen) |
 | `pnpm db:migrate` / `db:generate` | nowa migracja z `schema.prisma` / wygenerowanie klienta (po każdej migracji) |
 | `pnpm db:seed` / `db:studio` | dane startowe, Prisma Studio |
 
-Testy: brak runnera — nie ma komendy `pnpm test`. Do czasu jego dodania
-weryfikacją są `pnpm lint`, `pnpm typecheck`, `pnpm build` i ręczne
-sprawdzenie (curl — patrz `apps/backend/CLAUDE.md`, przeglądarka).
+Testy: `pnpm test` (Vitest, `*.test.ts` obok testowanego pliku, bez bazy —
+zależności mockowane); jeden plik:
+`pnpm --filter @expence/backend exec vitest run <ścieżka>`. Nowy test
+dopisuje skill `test` (`/test <plik>`), a w pakiecie bez Vitesta najpierw
+go konfiguruje. Części bez testów weryfikują `pnpm lint`, `pnpm typecheck`,
+`pnpm build` i ręczne sprawdzenie (curl — patrz `apps/backend/CLAUDE.md`,
+przeglądarka).
 
 Pojedynczy pakiet: `pnpm --filter @expence/backend <skrypt>`. Nazwy: `@expence/frontend`, `@expence/backend`, `@expence/db`, `@expence/types`, `@expence/auth`, `@expence/config`.
 
