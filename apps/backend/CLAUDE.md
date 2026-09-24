@@ -256,7 +256,17 @@ curl "localhost:3001/api/transactions?page=1&perPage=5" -H "Authorization: Beare
 Izolację sprawdzasz dwoma tokenami: zasób utworzony tokenem A musi dawać
 `404` przy `PATCH`/`DELETE` tokenem B.
 
-Komendy tylko dla tej aplikacji: `pnpm --filter @expence/backend dev|build|lint|typecheck`.
+Komendy tylko dla tej aplikacji: `pnpm --filter @expence/backend dev|build|lint|typecheck|test`.
+
+## Testy (Vitest)
+
+`vitest.config.ts` (środowisko `node`, alias `@/*`), pliki `src/**/*.test.ts`
+obok testowanego kodu. Testy nie dotykają bazy ani `.env`: `prisma` z
+`@expence/db` i repozytoria modułów są mockowane (`vi.mock` + `vi.hoisted`),
+a `dispatch` serwisu CQRS to `vi.fn()` przekazany argumentem. Przy
+serwisach obowiązkowo sprawdzamy, że każde zapytanie jest zawężone do
+`userId` z argumentu. Wzorzec: `src/server/services/category.service.test.ts`;
+nowe testy dopisuje skill `test` (`/test <plik>`).
 
 ## Aktualizacja dokumentacji
 
