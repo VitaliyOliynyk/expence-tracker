@@ -4,6 +4,7 @@ import { useId, type ReactNode } from "react";
 import { X } from "lucide-react";
 import { TRANSACTION_TYPES } from "@expence/types";
 import { useCategories } from "@/hooks/use-categories";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,9 +22,12 @@ const ALL = "all";
 
 const TYPE_FILTER_LABELS = { INCOME: "Przychody", EXPENSE: "Wydatki" } as const;
 
+// Wypelnione pola bez obramowania - jak wyszukiwarka i selecty w referencji panelu.
+const CONTROL = "h-10 rounded-xl border-transparent bg-secondary shadow-none";
+
 function FilterField({ id, label, children }: { id: string; label: string; children: ReactNode }) {
   return (
-    <div className="flex min-w-36 flex-1 flex-col gap-1.5 sm:flex-none">
+    <div className="flex min-w-0 flex-1 basis-36 flex-col gap-1.5">
       <Label htmlFor={id} className="text-xs text-muted-foreground">
         {label}
       </Label>
@@ -46,7 +50,10 @@ export function TransactionFilters() {
             value={filters.type ?? ALL}
             onValueChange={(value) => setFilter("type", value === ALL ? undefined : value)}
           >
-            <SelectTrigger id={`${id}-type`} className="w-full sm:w-40">
+            <SelectTrigger
+              id={`${id}-type`}
+              className={cn(CONTROL, "w-full data-[size=default]:h-10")}
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -65,14 +72,20 @@ export function TransactionFilters() {
             value={filters.categoryId ?? ALL}
             onValueChange={(value) => setFilter("categoryId", value === ALL ? undefined : value)}
           >
-            <SelectTrigger id={`${id}-category`} className="w-full sm:w-48">
+            <SelectTrigger
+              id={`${id}-category`}
+              className={cn(CONTROL, "w-full data-[size=default]:h-10")}
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={ALL}>Wszystkie kategorie</SelectItem>
               {categories.data?.map((category) => (
                 <SelectItem key={category.id} value={category.id}>
-                  <span className="size-2 rounded-full" style={{ backgroundColor: category.color }} />
+                  <span
+                    className="size-2 rounded-full"
+                    style={{ backgroundColor: category.color }}
+                  />
                   {category.name}
                 </SelectItem>
               ))}
@@ -84,7 +97,7 @@ export function TransactionFilters() {
           <Input
             id={`${id}-from`}
             type="date"
-            className="sm:w-40"
+            className={CONTROL}
             value={filters.dateFrom ?? ""}
             max={filters.dateTo}
             aria-invalid={rangeInverted || undefined}
@@ -97,7 +110,7 @@ export function TransactionFilters() {
           <Input
             id={`${id}-to`}
             type="date"
-            className="sm:w-40"
+            className={CONTROL}
             value={filters.dateTo ?? ""}
             min={filters.dateFrom}
             aria-invalid={rangeInverted || undefined}
@@ -107,7 +120,7 @@ export function TransactionFilters() {
         </FilterField>
 
         {hasActiveFilters ? (
-          <Button variant="ghost" onClick={reset}>
+          <Button variant="ghost" className="h-10" onClick={reset}>
             <X />
             Wyczysc filtry
           </Button>

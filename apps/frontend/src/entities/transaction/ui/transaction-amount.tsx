@@ -14,8 +14,8 @@ export function TransactionAmount({ amountCents, type, className }: TransactionA
   return (
     <span
       className={cn(
-        "font-medium whitespace-nowrap tabular-nums",
-        isIncome ? "text-emerald-600 dark:text-emerald-400" : "text-foreground",
+        "font-semibold whitespace-nowrap tabular-nums",
+        isIncome ? "text-mint-ink" : "text-foreground",
         className,
       )}
     >
