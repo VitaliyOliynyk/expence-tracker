@@ -57,9 +57,11 @@ export function TransactionFormDialog({ transaction, trigger }: TransactionFormD
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="rounded-[1.75rem] p-7 sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{transaction ? "Edytuj transakcje" : "Nowa transakcja"}</DialogTitle>
+          <DialogTitle className="text-xl font-bold tracking-tight">
+            {transaction ? "Edytuj transakcje" : "Nowa transakcja"}
+          </DialogTitle>
           <DialogDescription>
             {transaction ? "Zmien dane transakcji i zapisz." : "Dodaj przychod albo wydatek."}
           </DialogDescription>
@@ -81,9 +83,7 @@ function isFormField(name: string): name is FormField {
 function toFormValues(transaction?: TransactionDto): CreateTransactionFormValues {
   return {
     type: transaction?.type ?? "EXPENSE",
-    amount: transaction
-      ? centsToUnits(transaction.amountCents).toFixed(2).replace(".", ",")
-      : "",
+    amount: transaction ? centsToUnits(transaction.amountCents).toFixed(2).replace(".", ",") : "",
     categoryId: transaction?.category.id ?? "",
     date: transaction?.date ?? dateInputToIso(todayDateInput()),
     description: transaction?.description ?? "",
@@ -211,7 +211,11 @@ function TransactionForm({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Kategoria</FormLabel>
-              <Select value={field.value} onValueChange={field.onChange} disabled={!categories.data}>
+              <Select
+                value={field.value}
+                onValueChange={field.onChange}
+                disabled={!categories.data}
+              >
                 <FormControl>
                   <SelectTrigger className="w-full">
                     <SelectValue

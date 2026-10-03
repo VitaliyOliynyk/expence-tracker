@@ -92,7 +92,7 @@ export function RegisterForm() {
           </Alert>
         ) : null}
 
-        <Button type="submit" disabled={form.formState.isSubmitting}>
+        <Button type="submit" size="lg" className="mt-2" disabled={form.formState.isSubmitting}>
           {form.formState.isSubmitting ? "Zakladanie konta..." : "Zaloz konto"}
         </Button>
       </form>

@@ -70,7 +70,7 @@ export function LoginForm() {
           </Alert>
         ) : null}
 
-        <Button type="submit" disabled={form.formState.isSubmitting}>
+        <Button type="submit" size="lg" className="mt-2" disabled={form.formState.isSubmitting}>
           {form.formState.isSubmitting ? "Logowanie..." : "Zaloguj sie"}
         </Button>
       </form>

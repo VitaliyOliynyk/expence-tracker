@@ -35,12 +35,15 @@ export function DeleteTransactionButton({ transaction }: { transaction: Transact
           <Trash2 />
         </Button>
       </AlertDialogTrigger>
-      <AlertDialogContent>
+      <AlertDialogContent className="rounded-[1.75rem] p-7">
         <AlertDialogHeader>
-          <AlertDialogTitle>Usunac transakcje?</AlertDialogTitle>
+          <AlertDialogTitle className="text-xl font-bold tracking-tight">
+            Usunac transakcje?
+          </AlertDialogTitle>
           <AlertDialogDescription>
-            {transaction.description || "Transakcja bez opisu"} z dnia {formatDate(transaction.date)}{" "}
-            na kwote {formatAmount(transaction.amountCents)} zostanie usunieta na stale.
+            {transaction.description || "Transakcja bez opisu"} z dnia{" "}
+            {formatDate(transaction.date)} na kwote {formatAmount(transaction.amountCents)} zostanie
+            usunieta na stale.
           </AlertDialogDescription>
         </AlertDialogHeader>
         {deleteTransaction.isError ? (

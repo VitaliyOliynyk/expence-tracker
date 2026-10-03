@@ -1,54 +1,89 @@
 @import "tailwindcss";
 
 /* Tailwind v4: konfiguracja zyje w CSS, nie w tailwind.config.js.
-   Zmienne ponizej to zestaw tokenow shadcn/ui (baseColor: slate). */
+   Zmienne ponizej to tokeny shadcn/ui plus wlasne kolory panelu. */
 
 @custom-variant dark (&:is(.dark *));
 
+/* Paleta z referencji "Wallet": chlodne jasnoszare plotno, biala skorupa
+   aplikacji, fioletowa czern (ink) dla ciemnych paneli i trzy pastele -
+   mieta (przychody), brzoskwinia (wydatki), barwinek (saldo). Kazdy pastel ma
+   ciemniejszy odcien "-ink" do tekstu i ikon na jasnym tle. */
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.129 0.042 264.695);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.129 0.042 264.695);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.129 0.042 264.695);
-  --primary: oklch(0.208 0.042 265.755);
-  --primary-foreground: oklch(0.984 0.003 247.858);
-  --secondary: oklch(0.968 0.007 247.896);
-  --secondary-foreground: oklch(0.208 0.042 265.755);
-  --muted: oklch(0.968 0.007 247.896);
-  --muted-foreground: oklch(0.554 0.046 257.417);
-  --accent: oklch(0.968 0.007 247.896);
-  --accent-foreground: oklch(0.208 0.042 265.755);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.929 0.013 255.508);
-  --input: oklch(0.929 0.013 255.508);
-  --ring: oklch(0.704 0.04 256.788);
+  --radius: 0.875rem;
+  --canvas: #eeedf0;
+  --sidebar: #f6f5f8;
+  --ink: #17151f;
+  --ink-raised: #2c2a35;
+  --mint: #e3f6e8;
+  --mint-ink: #2e8a52;
+  --peach: #fce7dc;
+  --peach-ink: #c0622f;
+  --periwinkle: #e6ecfa;
+  --periwinkle-ink: #4a62b0;
+  --background: #ffffff;
+  --foreground: #17151f;
+  --card: #ffffff;
+  --card-foreground: #17151f;
+  --popover: #ffffff;
+  --popover-foreground: #17151f;
+  --primary: #17151f;
+  --primary-foreground: #ffffff;
+  --secondary: #f2f1f4;
+  --secondary-foreground: #17151f;
+  --muted: #f2f1f4;
+  --muted-foreground: #73707d;
+  --accent: #f2f1f4;
+  --accent-foreground: #17151f;
+  --destructive: #d23c3c;
+  --border: #ebeaee;
+  --input: #e3e2e7;
+  --ring: #9d9aa8;
 }
 
 .dark {
-  --background: oklch(0.129 0.042 264.695);
-  --foreground: oklch(0.984 0.003 247.858);
-  --card: oklch(0.208 0.042 265.755);
-  --card-foreground: oklch(0.984 0.003 247.858);
-  --popover: oklch(0.208 0.042 265.755);
-  --popover-foreground: oklch(0.984 0.003 247.858);
-  --primary: oklch(0.929 0.013 255.508);
-  --primary-foreground: oklch(0.208 0.042 265.755);
-  --secondary: oklch(0.279 0.041 260.031);
-  --secondary-foreground: oklch(0.984 0.003 247.858);
-  --muted: oklch(0.279 0.041 260.031);
-  --muted-foreground: oklch(0.704 0.04 256.788);
-  --accent: oklch(0.279 0.041 260.031);
-  --accent-foreground: oklch(0.984 0.003 247.858);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.551 0.027 264.364);
+  --canvas: #0d0c11;
+  --sidebar: #15141b;
+  --ink: #000000;
+  --ink-raised: #26242e;
+  --mint: #1b3325;
+  --mint-ink: #7fd39d;
+  --peach: #3a2419;
+  --peach-ink: #f0a47a;
+  --periwinkle: #1f2640;
+  --periwinkle-ink: #a5b6ec;
+  --background: #1b1a21;
+  --foreground: #f4f3f7;
+  --card: #1b1a21;
+  --card-foreground: #f4f3f7;
+  --popover: #24232b;
+  --popover-foreground: #f4f3f7;
+  --primary: #f4f3f7;
+  --primary-foreground: #17151f;
+  --secondary: #2a2931;
+  --secondary-foreground: #f4f3f7;
+  --muted: #2a2931;
+  --muted-foreground: #a4a1ae;
+  --accent: #2a2931;
+  --accent-foreground: #f4f3f7;
+  --destructive: #ef6b6b;
+  --border: rgb(255 255 255 / 10%);
+  --input: rgb(255 255 255 / 15%);
+  --ring: #6c6977;
 }
 
 @theme inline {
+  --font-sans: var(--font-urbanist), ui-sans-serif, system-ui, sans-serif;
+  --color-canvas: var(--canvas);
+  --color-sidebar: var(--sidebar);
+  --color-ink: var(--ink);
+  --color-ink-raised: var(--ink-raised);
+  --color-mint: var(--mint);
+  --color-mint-ink: var(--mint-ink);
+  --color-peach: var(--peach);
+  --color-peach-ink: var(--peach-ink);
+  --color-periwinkle: var(--periwinkle);
+  --color-periwinkle-ink: var(--periwinkle-ink);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -70,6 +105,7 @@
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 6px);
 }
 
 @layer base {
@@ -77,6 +113,6 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-canvas font-sans text-foreground antialiased;
   }
 }
