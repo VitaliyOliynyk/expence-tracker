@@ -266,8 +266,9 @@ Import tylko w dół: `app` → `widgets` → `features` → `entities` → shar
 src/
 ├── app/                   „pages” FSD: trasy Next, tylko kompozycja + auth guard
 ├── widgets/               samodzielne bloki strony
-│   ├── app-header/            logo, menu sekcji, menu profilu
+│   ├── app-shell/             sidebar (logo, menu sekcji, karta profilu), PageHeader/PageBody
 │   ├── auth-card/             ramka formularzy logowania/rejestracji
+│   ├── category-breakdown/    ciemny panel sum wg kategorii (/api/summary)
 │   ├── transactions-summary/  karty Przychody / Wydatki / Saldo
 │   └── transactions-table/    tabela, paginacja, akcje wiersza
 ├── features/              jedna intencja użytkownika
@@ -324,9 +325,10 @@ schematem.
 - **Kategorie w backendzie nie są modułem CQRS** — `category.service.ts`
   wołany wprost z route'ów; stąd wyjątek w `transaction.repository.ts`.
 - **Kategorie we frontendzie nie są w FSD** — `components/categories/` +
-  `hooks/use-categories.ts`, gołe elementy HTML bez shadcn/ui.
-- **`/api/summary` nie ma konsumenta w UI** — `hooks/use-summary.ts`
-  istnieje, ale karty podsumowania czytają `totals` z listy transakcji.
+  `hooks/use-categories.ts` (ostylowane prymitywami shadcn/ui).
+- **`/api/summary` ma w UI tylko widok wg kategorii** (`widgets/category-breakdown`);
+  karty podsumowania czytają `totals` z listy transakcji, `groupBy=month`
+  nie ma konsumenta.
 - **`Budget`** ma model w bazie, ale nie ma API ani UI.
 - **Testy tylko w backendzie** — Vitest w `apps/backend` (`pnpm test`);
   frontend i pakiety weryfikuje `pnpm lint`, `pnpm typecheck`, `pnpm build`

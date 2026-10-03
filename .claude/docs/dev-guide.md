@@ -473,7 +473,7 @@ I koniecznie:
 - Stan w URL (`useSearchParams`) wymaga `<Suspense>` na stronie, inaczej
   `pnpm build` wyłoży się na prerenderingu.
 - Nowa chroniona sekcja: strona pod `app/(dashboard)/` **i** wpis w
-  `matcher` w `apps/frontend/src/proxy.ts`; link w `widgets/app-header`.
+  `matcher` w `apps/frontend/src/proxy.ts`; link w `NAV_ITEMS` w `widgets/app-shell/ui/nav-links.tsx`.
 - Po `shadcn add`: podmień `from "cn"` na `from "@/lib/utils"` w nowych
   plikach `components/ui/*`, usuń pakiet `cn` z `package.json`, uruchom
   `pnpm typecheck`.

@@ -19,18 +19,23 @@ tylko przy logowaniu i rejestracji.
   wylogowanie.
 - `/transactions` — strona główna (tam kierują `/`, logowanie i rejestracja):
   lista transakcji stronicowana po 10, filtry typu/kategorii/zakresu dat
-  trzymane w URL, karty Przychody/Wydatki/Saldo, dodawanie i edycja w
-  dialogu, usuwanie z potwierdzeniem. Całość w FSD i shadcn/ui.
-- Layout panelu `(dashboard)/layout.tsx` — nagłówek z menu sekcji
-  (Transakcje, Kategorie) i menu profilu (inicjały, imię, e-mail,
-  wylogowanie).
+  trzymane w URL, pastelowe karty Przychody/Wydatki/Saldo, ciemny panel
+  sum wg kategorii (`/api/summary`; wiersz przełącza filtr kategorii
+  listy), dodawanie i edycja w dialogu, usuwanie z potwierdzeniem. Całość
+  w FSD i shadcn/ui.
+- `/categories` — lista z edycją w miejscu i formularz nowej kategorii, na
+  prymitywach shadcn/ui (wciąż w starym układzie katalogów, niżej).
+- Layout panelu `(dashboard)/layout.tsx` → `widgets/app-shell`: biała
+  „skorupa” na szarym płótnie, sidebar z logo, menu sekcji (Transakcje,
+  Kategorie) i ciemną kartą profilu (inicjały, imię, e-mail, wylogowanie);
+  poniżej `lg` jeden pasek u góry. Strony składają się z `PageHeader` +
+  `PageBody` z tego samego widgetu.
 
-**Czego jeszcze nie ma:** lista i formularz kategorii
-(`(dashboard)/categories`) to wciąż gołe elementy HTML bez shadcn/ui, w
-starym płaskim układzie `components/`+`hooks/`+`lib/` (nowy nagłówek dostają
-już z layoutu). `/api/summary` nie ma jeszcze konsumenta w UI — hook
-`hooks/use-summary.ts` istnieje, ale nikt go nie używa (karty podsumowania
-czytają `totals` z listy transakcji). Brak UI dla `Budget`.
+**Czego jeszcze nie ma:** kategorie (`(dashboard)/categories`) są
+ostylowane, ale wciąż w starym płaskim układzie `components/`+`hooks/`+`lib/`
+(migracja na FSD osobno); pole `icon` kategorii (nazwa ikony lucide) jest
+wyświetlane jako tekst. Wykresu w czasie (`/api/summary?groupBy=month`) nie
+ma. Brak UI dla `Budget`.
 
 ## Trasy
 
@@ -103,10 +108,12 @@ Warstwy w `src/` (import tylko w dół: `app` → `widgets` → `features` →
   fizyczną lokalizację (routing), więc to jedyna warstwa, której nie da
   się przenieść pod osobny katalog.
 - **`widgets/`** — samodzielne bloki strony składane z feature'ów i encji:
-  `widgets/auth-card` (ramka `Card` + nagłówek + link zamienny współdzielony
-  przez `/sign-in` i `/sign-up`), `widgets/app-header` (logo, menu sekcji,
-  menu profilu — w `(dashboard)/layout.tsx`), `widgets/transactions-summary`
-  i `widgets/transactions-table` (tabela, paginacja, akcje wiersza).
+  `widgets/auth-card` (ramka + nagłówek + link zamienny współdzielony
+  przez `/sign-in` i `/sign-up`), `widgets/app-shell` (sidebar z logo, menu
+  sekcji i kartą profilu, `PageHeader`/`PageBody` — w
+  `(dashboard)/layout.tsx` i stronach panelu), `widgets/transactions-summary`,
+  `widgets/transactions-table` (tabela, paginacja, akcje wiersza) i
+  `widgets/category-breakdown` (ciemny panel sum wg kategorii).
 - **`features/<domena>/<akcja>/`** — jedna intencja użytkownika:
   `features/auth/login`, `features/auth/register`, `features/auth/logout`,
   `features/transaction/upsert` (dodanie/edycja w jednym dialogu),
@@ -171,6 +178,16 @@ wysyłanie `z.input` do API — patrz "`packages/types` to kontrakt" w głównym
 - **Tailwind v4 nie ma `tailwind.config.js`** — motyw i tokeny shadcn/ui są
   w `src/app/globals.css`. `components.json` celowo ma pusty
   `tailwind.config`.
+- **Język wizualny** (wzorowany na referencji „Wallet”): szare płótno
+  `bg-canvas`, biała skorupa panelu, sidebar `bg-sidebar`, fioletowa czerń
+  `bg-ink` dla ciemnych paneli i kafelków ikon, pastele z ciemniejszym
+  odcieniem do tekstu: `mint`/`mint-ink` = przychód, `peach`/`peach-ink` =
+  wydatek, `periwinkle`/`periwinkle-ink` = saldo. Tokeny są w
+  `globals.css` — używaj ich zamiast surowych kolorów Tailwinda
+  (`emerald-600` itp.). Jeden krój: Urbanist z `next/font/google`
+  (`app/layout.tsx`, zmienna `--font-urbanist` → `font-sans`). Duże bloki
+  mają promień `rounded-[1.75rem]`–`rounded-[2.5rem]`, prymitywy dziedziczą
+  `--radius`.
 - Prymitywy dodajesz przez `pnpm dlx shadcn@latest add <komponent>` (z
   katalogu `apps/frontend`); lądują w `src/components/ui/`. Nie edytuj ich
   pod jeden przypadek użycia — wariant albo kompozycja w warstwie wyżej.
